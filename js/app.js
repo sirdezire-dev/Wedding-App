@@ -35,6 +35,9 @@
     custom: { flights: [], stays: [] },
     found: {}, // prices guests found online, by option id
     tierEdits: {}, // swaps made inside each budget package
+    openStep: 1, // which step is open (1-6), or null
+    quickOpen: false,
+    confirmed: { when: false, budget: false, extras: false },
     textSize: 'normal',
   });
 
@@ -56,6 +59,7 @@
         custom: { ...d.custom, ...raw.custom },
         found: { ...d.found, ...raw.found },
         tierEdits: { ...d.tierEdits, ...raw.tierEdits },
+        confirmed: { ...d.confirmed, ...raw.confirmed },
       };
     } catch (e) {
       return d;
@@ -219,7 +223,7 @@
     $('#quick-body').innerHTML = `
       <p class="lead">Each button opens the booking website with the wedding dates already filled in:
         <b>${ok ? `${niceDate(t.arrive, true)} to ${niceDate(t.depart, true)}` : 'choose your dates in step 2'}</b>, ${plural(t.travelers, 'person', 'people')}.
-        <a href="#step-when">Change dates or people</a></p>
+        <button type="button" class="link-btn" data-open-step="2">Change dates or people</button></p>
       <div class="quick-grid">
         ${tile('Flights', `Salt Lake City has the most flights (3¾ hours’ drive). Moab’s own airport is 15 minutes away but has few flights.${from ? ` Searching from ${esc(airportLabel(from))}.` : ''}`, [
           { label: 'Flights to Salt Lake City', url: L.flightTo({ from, to: 'SLC', ...d }) },
@@ -312,7 +316,8 @@
     state.selection.groundId = null;
     save();
     renderAll();
-    toast('Found you! Your trip options are ready below.');
+    toast('Found you! Next, your dates.');
+    openStep(2);
   }
 
   // ---------------------------------------------------------------- step 2: when
@@ -418,11 +423,11 @@
     const el = $('#options');
     const t = trip();
     if (!travelOptions().length) {
-      el.innerHTML = `<div class="empty">Start with <a href="#step-home">step 1</a> — tell us where you’re traveling from and your packages will appear here.</div>${compareTable()}`;
+      el.innerHTML = `<div class="empty">Start with <button type="button" class="link-btn" data-open-step="1">step 1</button> — tell us where you’re traveling from and your packages will appear here.</div>${compareTable()}`;
       return;
     }
     if (!P.nights(t.arrive, t.depart)) {
-      el.innerHTML = `<div class="empty">Choose your travel dates in <a href="#step-when">step 2</a>.</div>`;
+      el.innerHTML = `<div class="empty">Choose your travel dates in <button type="button" class="link-btn" data-open-step="2">step 2</button>.</div>`;
       return;
     }
     const b = budget();
@@ -641,6 +646,7 @@
     scope.querySelectorAll('.trip-map').forEach((el) => {
       const details = el.closest('details');
       if (details && !details.open) return;
+      if (el.closest('[hidden]')) return; // drawn when its step opens
       if (mapRoutes[el.id]) window.TripMap.render(el, mapRoutes[el.id]);
     });
   }
@@ -734,7 +740,7 @@
     const t = trip();
     const f = state.filters;
     const opts = travelOptions();
-    if (!opts.length) return `<div class="empty">Tell us where you’re traveling from in <a href="#step-home">step 1</a> to see flights.</div>`;
+    if (!opts.length) return `<div class="empty">Tell us where you’re traveling from in <button type="button" class="link-btn" data-open-step="1">step 1</button> to see flights.</div>`;
     const list = opts
       .filter((o) => o.kind === 'drive' || (o.stops <= f.stops && (f.arrival === 'all' || o.to === f.arrival)))
       .sort((a, b) => (a.kind === 'drive' ? -1 : b.kind === 'drive' ? 1 : P.travelCost(a, t) - P.travelCost(b, t)));
@@ -942,7 +948,7 @@
     const any = sel.travel || sel.stay || sel.ground || sel.activities.length;
 
     if (!any) {
-      el.innerHTML = `<div class="empty">Nothing chosen yet. Choose a package in <a href="#step-options">step 4</a>, or add parts in <a href="#step-browse">step 5</a>. Everything you choose will be listed here with a button to book it.</div>`;
+      el.innerHTML = `<div class="empty">Nothing chosen yet. Choose a package in <button type="button" class="link-btn" data-open-step="4">step 4</button>, or pick each part in <button type="button" class="link-btn" data-open-step="5">step 5</button>. Everything you choose will be listed here with a button to book it.</div>`;
       return;
     }
 
@@ -1109,7 +1115,7 @@
           <span class="tb-total">${fmt(c.total)}</span>
           ${left == null ? '' : `<span class="tb-status ${left >= 0 ? 'good' : 'bad'}">${left >= 0 ? `${fmt(left)} left of ${fmt(b.total)}` : `${fmt(-left)} over your ${fmt(b.total)} budget`}</span>`}
         </div>
-        <a class="btn btn-primary" href="#step-mytrip">See my trip</a>
+        <button type="button" class="btn btn-primary" data-open-step="6">See my trip</button>
       </div>`;
   }
 
@@ -1189,6 +1195,29 @@
 
   // ---------------------------------------------------------------- events
   function onClick(e) {
+    const opener = e.target.closest('[data-open-step]');
+    if (opener) {
+      const n = opener.dataset.openStep;
+      // Clicking the open step's header closes it.
+      if (opener.classList.contains('step-toggle') && n !== 'quick' && state.openStep === Number(n)) {
+        state.openStep = null;
+        save();
+        renderSteps();
+        return;
+      }
+      openStep(n);
+      return;
+    }
+    const nx = e.target.closest('[data-action="next-step"]');
+    if (nx) return nextStep(Number(nx.dataset.step));
+    if (e.target.closest('[data-action="build-own"]')) {
+      state.tab = 'travel';
+      save();
+      renderTabs();
+      renderBrowse();
+      openStep(5);
+      return;
+    }
     const sizeBtn = e.target.closest('[data-text-size]');
     if (sizeBtn) {
       state.textSize = sizeBtn.dataset.textSize;
@@ -1277,10 +1306,11 @@
         s.groundId = pkg.ground ? pkg.ground.id : null;
         f.groundAirport = pkg.travel && pkg.travel.kind === 'flight' ? pkg.travel.to : '';
         state.booked = {};
+        state.tab = 'activities';
         save();
         renderAll();
-        toast('Great choice! Book each part below.');
-        $('#step-mytrip').scrollIntoView({ behavior: 'smooth' });
+        toast('Package chosen! Add things to do, or continue to your summary.');
+        openStep(5);
         return;
       }
       case 'save-package': {
@@ -1316,7 +1346,7 @@
         save();
         renderTabs();
         renderBrowse();
-        $('#step-browse').scrollIntoView({ behavior: 'smooth' });
+        openStep(5);
         return;
       case 'remove-saved':
         state.saved = state.saved.filter((x) => x.id !== id);
@@ -1330,7 +1360,11 @@
         if (!confirm('Clear your chosen trip and start over?')) return;
         state.selection = defaults().selection;
         state.booked = {};
-        break;
+        state.confirmed.extras = false;
+        save();
+        renderAll();
+        openStep(4);
+        return;
       case 'print':
         window.print();
         return;
@@ -1425,8 +1459,147 @@
     tabs[i].focus();
   }
 
+  // ---------------------------------------------------------------- steps (one open at a time)
+  const STEP_IDS = { 1: 'step-home', 2: 'step-when', 3: 'step-budget', 4: 'step-options', 5: 'step-browse', 6: 'step-mytrip' };
+
+  function stepDone(n) {
+    const t = trip();
+    const sel = state.selection;
+    switch (n) {
+      case 1: return !!(state.home || state.origins.length);
+      case 2: return state.confirmed.when && P.nights(t.arrive, t.depart) > 0;
+      case 3: return state.confirmed.budget;
+      case 4: return !!(sel.travelId && sel.stayId);
+      case 5: return state.confirmed.extras && stepDone(4);
+      default: return false;
+    }
+  }
+
+  /** Steps open in order: 1-3 one after another, 4 and 5 once 1-3 are done, 6 once a trip is chosen. */
+  function stepAvailable(n) {
+    if (n <= 1) return true;
+    if (n <= 4) return stepDone(n - 1) && stepAvailable(n - 1);
+    if (n === 5) return stepDone(1) && stepDone(2) && stepDone(3);
+    return stepAvailable(5) && stepDone(4);
+  }
+
+  function firstOpenable() {
+    for (let n = 1; n <= 6; n++) if (!stepDone(n) && stepAvailable(n)) return n;
+    return 6;
+  }
+
+  function stepSummary(n) {
+    const t = trip();
+    const b = budget();
+    const sel = selected();
+    if (n === 1) {
+      const place = state.home ? state.home.label.split(',').slice(0, 2).join(',') : 'Chosen airport';
+      return `${place}${state.origins.length ? ` · flying from ${state.origins.join(', ')}` : ''}`;
+    }
+    if (n === 2) return `${niceDate(t.arrive)} to ${niceDate(t.depart)} · ${plural(t.travelers, 'person', 'people')}${t.groupSize > t.travelers ? `, sharing with ${t.groupSize - t.travelers} more` : ''}`;
+    if (n === 3) {
+      if (b.total == null) return 'No budget set, so we’ll show everything';
+      const caps = [['travel', 'flights'], ['stay', 'stay'], ['ground', 'car']].filter(([k]) => b.caps[k] != null).map(([k, l]) => `${l} up to ${fmt(b.caps[k])}`);
+      return `${fmt(b.total)} for the whole trip${caps.length ? ` · ${caps.join(', ')}` : ''}`;
+    }
+    if (n === 4) {
+      if (!sel.travel || !sel.stay) return '';
+      return `${travelShort(sel.travel)} · ${sel.stay.name} · ${fmt(P.costBreakdown({ ...sel, activities: [] }, t).total)}`;
+    }
+    if (n === 5) return sel.activities.length ? `${plural(sel.activities.length, 'thing', 'things')} to do added` : 'No extras added';
+    return '';
+  }
+
+  function nextControls(n) {
+    const t = trip();
+    if (n === 1) return stepDone(1) ? `<button type="button" class="btn btn-primary btn-next" data-action="next-step" data-step="1">Continue to dates</button>` : '';
+    if (n === 2) {
+      return P.nights(t.arrive, t.depart) > 0
+        ? `<button type="button" class="btn btn-primary btn-next" data-action="next-step" data-step="2">Continue to budget</button>`
+        : '';
+    }
+    if (n === 3) {
+      const b = budget();
+      return `<button type="button" class="btn btn-primary btn-next" data-action="next-step" data-step="3">Show my packages</button>
+        ${b.total == null ? '<p class="muted">No budget? That’s fine. We’ll show packages from the lowest price up.</p>' : ''}`;
+    }
+    if (n === 4) {
+      return `<div class="btn-row">
+        ${stepDone(4) ? '<button type="button" class="btn btn-primary btn-next" data-action="next-step" data-step="4">Continue with my chosen package</button>' : ''}
+        <button type="button" class="btn ${stepDone(4) ? 'btn-quiet' : ''}" data-action="build-own">I’d rather pick each part myself</button></div>`;
+    }
+    if (n === 5) {
+      return stepDone(4)
+        ? `<button type="button" class="btn btn-primary btn-next" data-action="next-step" data-step="5">Continue to my summary</button>`
+        : `<p class="notice warn">To see your summary, choose how you’ll get there and where you’ll stay (use the tabs above), or pick a package in step 4.</p>`;
+    }
+    return '';
+  }
+
+  function renderSteps() {
+    for (let n = 1; n <= 6; n++) {
+      const sec = document.getElementById(STEP_IDS[n]);
+      const open = state.openStep === n;
+      const done = stepDone(n);
+      const avail = stepAvailable(n);
+      sec.classList.toggle('is-open', open);
+      sec.classList.toggle('is-done', done && !open);
+      sec.classList.toggle('is-locked', !avail);
+      $(`#body-${n}`).hidden = !open;
+      const btn = sec.querySelector('.step-toggle');
+      btn.setAttribute('aria-expanded', String(open));
+      btn.setAttribute('aria-disabled', String(!avail));
+      $(`#sum-${n}`).textContent = !open && done ? stepSummary(n) : !avail ? `Finish step ${firstOpenable()} first` : '';
+      $(`#cue-${n}`).textContent = open ? 'Close' : done ? 'Change' : avail ? 'Open' : '';
+      $(`#next-${n}`).innerHTML = nextControls(n);
+    }
+    const quickOpen = !!state.quickOpen;
+    $('#body-quick').hidden = !quickOpen;
+    $('#quick').classList.toggle('is-open', quickOpen);
+    $('#quick .step-toggle').setAttribute('aria-expanded', String(quickOpen));
+    $('#cue-quick').textContent = quickOpen ? 'Close' : 'Open';
+    $('#browse-lead').textContent = stepDone(4)
+      ? 'Your package is in place. Add things to do (optional), or change any part using the tabs.'
+      : 'Pick how you’ll get there, where you’ll stay and how you’ll get around. Then add things to do if you like.';
+  }
+
+  /** Open one step (closing the others) and bring it into view. */
+  function openStep(n, { scroll = true } = {}) {
+    if (n === 'quick') {
+      state.quickOpen = !state.quickOpen;
+      save();
+      renderSteps();
+      if (state.quickOpen && scroll) $('#quick').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    n = Number(n);
+    if (!stepAvailable(n)) {
+      toast(`Please finish step ${firstOpenable()} first.`);
+      n = firstOpenable();
+    }
+    state.openStep = n;
+    save();
+    renderSteps();
+    const sec = document.getElementById(STEP_IDS[n]);
+    drawMaps(sec);
+    if (scroll) {
+      sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      sec.querySelector('.step-toggle').focus({ preventScroll: true });
+    }
+  }
+
+  function nextStep(n) {
+    if (n === 2) state.confirmed.when = true;
+    if (n === 3) state.confirmed.budget = true;
+    if (n === 5) state.confirmed.extras = true;
+    save();
+    renderAll();
+    openStep(n === 4 ? 5 : n + 1);
+  }
+
   // ---------------------------------------------------------------- boot
   function renderAll() {
+    renderSteps();
     renderQuick();
     renderHome();
     renderWhen();
@@ -1461,6 +1634,7 @@
   document.addEventListener('submit', onSubmit);
   document.addEventListener('keydown', onKeydown);
 
+  if (state.openStep != null && !stepAvailable(state.openStep)) state.openStep = firstOpenable();
   renderHeader();
   applyTextSize();
   fillForms();

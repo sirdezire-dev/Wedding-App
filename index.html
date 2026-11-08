@@ -32,107 +32,135 @@
     <p class="hero-venue" id="hero-venue"></p>
     <p class="hero-countdown" id="countdown"></p>
     <div class="hero-actions">
-      <a href="#quick" class="btn btn-primary btn-xl">Book my trip</a>
-      <a href="#step-home" class="btn btn-xl btn-light">Help me plan it first</a>
+      <button type="button" class="btn btn-primary btn-xl" data-open-step="1">Start planning my trip</button>
+      <button type="button" class="btn btn-xl btn-light" data-open-step="quick">I already know what I want</button>
     </div>
   </header>
 
   <main>
-    <!-- Quick booking -->
-    <section class="step quick" id="quick" aria-labelledby="h-quick">
-      <h2 id="h-quick">Book your trip</h2>
-      <div id="quick-body"></div>
+    <!-- Quick booking (separate shortcut) -->
+    <section class="step quick" id="quick">
+      <h2 class="step-h"><button type="button" class="step-toggle" data-open-step="quick" aria-expanded="false" aria-controls="body-quick">
+        <span class="num num-quick" aria-hidden="true">✈</span><span class="step-text"><span class="step-title">Book directly</span><span class="step-sum">Already know what you want? Flights, hotels, homes and cars, with the wedding dates filled in.</span></span><span class="step-cue" id="cue-quick" aria-hidden="true"></span></button></h2>
+      <div class="step-body" id="body-quick" hidden>
+        <div id="quick-body"></div>
+      </div>
     </section>
 
-    <div class="divider"><span>Not sure what to book? We’ll help you choose, step by step.</span></div>
+    <p class="flow-intro">Or let us help you, one step at a time:</p>
 
     <!-- 1. Where from -->
-    <section class="step" id="step-home" aria-labelledby="h-home">
-      <h2 id="h-home"><span class="num" aria-hidden="true">1</span>Where are you traveling from?</h2>
-      <p class="lead">Type your home address, town or ZIP code. We’ll find your nearest airports and every way to get here.</p>
-      <form id="home-form" class="search-row" role="search">
-        <label for="home-q" class="sr-only">Your home address, town or ZIP code</label>
-        <input id="home-q" name="q" type="text" autocomplete="street-address" placeholder="For example: 12 Oak Street, Columbus, Ohio" />
-        <button class="btn btn-primary" type="submit">Search</button>
-      </form>
-      <button type="button" class="btn btn-quiet" id="geo-btn">Use my current location instead</button>
-      <div id="home-results" aria-live="polite"></div>
+    <section class="step" id="step-home" data-step="1">
+      <h2 class="step-h"><button type="button" class="step-toggle" data-open-step="1" aria-expanded="false" aria-controls="body-1">
+        <span class="num" aria-hidden="true">1</span><span class="step-text"><span class="step-title">Where are you traveling from?</span><span class="step-sum" id="sum-1"></span></span><span class="step-cue" id="cue-1" aria-hidden="true"></span></button></h2>
+      <div class="step-body" id="body-1" hidden>
+        <p class="lead">Type your home address, town or ZIP code. We’ll find your nearest airports and every way to get here.</p>
+        <form id="home-form" class="search-row" role="search">
+          <label for="home-q" class="sr-only">Your home address, town or ZIP code</label>
+          <input id="home-q" name="q" type="text" autocomplete="street-address" placeholder="For example: 12 Oak Street, Columbus, Ohio" />
+          <button class="btn btn-primary" type="submit">Search</button>
+        </form>
+        <button type="button" class="btn btn-quiet" id="geo-btn">Use my current location instead</button>
+        <div id="home-results" aria-live="polite"></div>
+        <div class="step-next" id="next-1"></div>
+      </div>
     </section>
 
     <!-- 2. When & who -->
-    <section class="step" id="step-when" aria-labelledby="h-when">
-      <h2 id="h-when"><span class="num" aria-hidden="true">2</span>When are you coming, and who’s coming with you?</h2>
-      <p class="lead" id="when-lead"></p>
-      <form id="when-form" class="form-grid" autocomplete="off">
-        <label class="field"><span>Day you arrive</span><input type="date" name="arrive" /></label>
-        <label class="field"><span>Day you leave</span><input type="date" name="depart" /></label>
-        <div class="field">
-          <span id="lbl-travelers">Number of people in your party</span>
-          <div class="stepper" role="group" aria-labelledby="lbl-travelers">
-            <button type="button" data-stepper="travelers" data-delta="-1" aria-label="One fewer person">−</button>
-            <output id="out-travelers" aria-live="polite"></output>
-            <button type="button" data-stepper="travelers" data-delta="1" aria-label="One more person">+</button>
+    <section class="step" id="step-when" data-step="2">
+      <h2 class="step-h"><button type="button" class="step-toggle" data-open-step="2" aria-expanded="false" aria-controls="body-2">
+        <span class="num" aria-hidden="true">2</span><span class="step-text"><span class="step-title">When are you coming, and who’s coming with you?</span><span class="step-sum" id="sum-2"></span></span><span class="step-cue" id="cue-2" aria-hidden="true"></span></button></h2>
+      <div class="step-body" id="body-2" hidden>
+        <p class="lead" id="when-lead"></p>
+        <form id="when-form" class="form-grid" autocomplete="off">
+          <label class="field"><span>Day you arrive</span><input type="date" name="arrive" /></label>
+          <label class="field"><span>Day you leave</span><input type="date" name="depart" /></label>
+          <div class="field">
+            <span id="lbl-travelers">Number of people in your party</span>
+            <div class="stepper" role="group" aria-labelledby="lbl-travelers">
+              <button type="button" data-stepper="travelers" data-delta="-1" aria-label="One fewer person">−</button>
+              <output id="out-travelers" aria-live="polite"></output>
+              <button type="button" data-stepper="travelers" data-delta="1" aria-label="One more person">+</button>
+            </div>
           </div>
-        </div>
-      </form>
-      <details class="more" id="sharing">
-        <summary>Sharing a house, room or car with other guests?</summary>
-        <p>Tell us how many people are in your whole group, and we’ll split the cost of the place to stay and the car fairly, by person.</p>
-        <div class="field">
-          <span id="lbl-group">People in the whole group (including you)</span>
-          <div class="stepper" role="group" aria-labelledby="lbl-group">
-            <button type="button" data-stepper="groupSize" data-delta="-1" aria-label="One fewer person in the group">−</button>
-            <output id="out-groupSize" aria-live="polite"></output>
-            <button type="button" data-stepper="groupSize" data-delta="1" aria-label="One more person in the group">+</button>
+        </form>
+        <details class="more" id="sharing">
+          <summary>Sharing a house, room or car with other guests?</summary>
+          <p>Tell us how many people are in your whole group, and we’ll split the cost of the place to stay and the car fairly, by person.</p>
+          <div class="field">
+            <span id="lbl-group">People in the whole group (including you)</span>
+            <div class="stepper" role="group" aria-labelledby="lbl-group">
+              <button type="button" data-stepper="groupSize" data-delta="-1" aria-label="One fewer person in the group">−</button>
+              <output id="out-groupSize" aria-live="polite"></output>
+              <button type="button" data-stepper="groupSize" data-delta="1" aria-label="One more person in the group">+</button>
+            </div>
           </div>
-        </div>
-      </details>
-      <div id="when-notes" class="notes" aria-live="polite"></div>
+        </details>
+        <div id="when-notes" class="notes" aria-live="polite"></div>
+        <div class="step-next" id="next-2"></div>
+      </div>
     </section>
 
     <!-- 3. Budget -->
-    <section class="step" id="step-budget" aria-labelledby="h-budget">
-      <h2 id="h-budget"><span class="num" aria-hidden="true">3</span>What’s your budget?</h2>
-      <p class="lead">For everyone in your party, for the whole trip. You can leave this blank to see everything.</p>
-      <form id="budget-form" autocomplete="off">
-        <label class="field field-wide"><span>Total budget for the whole trip</span>
-          <span class="money"><span aria-hidden="true">$</span><input type="number" inputmode="numeric" name="budget" min="0" step="50" placeholder="e.g. 3000" /></span>
-        </label>
-        <fieldset class="caps">
-          <legend>Want a limit for each part? <span class="optional">(optional)</span></legend>
-          <p class="hint">We’ll only show options under each limit. If you leave the total blank, your limits are added together to make your total budget.</p>
-          <div class="form-grid">
-            <label class="field"><span>Flights, at most</span><span class="money"><span aria-hidden="true">$</span><input type="number" inputmode="numeric" name="cap-travel" min="0" step="50" /></span></label>
-            <label class="field"><span>Place to stay, at most</span><span class="money"><span aria-hidden="true">$</span><input type="number" inputmode="numeric" name="cap-stay" min="0" step="50" /></span></label>
-            <label class="field"><span>Car or shuttle, at most</span><span class="money"><span aria-hidden="true">$</span><input type="number" inputmode="numeric" name="cap-ground" min="0" step="25" /></span></label>
-          </div>
-        </fieldset>
-      </form>
-      <div id="budget-notes" class="notes" aria-live="polite"></div>
-    </section>
-
-    <!-- 4. Options -->
-    <section class="step" id="step-options" aria-labelledby="h-options">
-      <h2 id="h-options"><span class="num" aria-hidden="true">4</span>Choose a package</h2>
-      <div id="options"></div>
-    </section>
-
-    <!-- 5. Choose parts -->
-    <section class="step" id="step-browse" aria-labelledby="h-browse">
-      <h2 id="h-browse"><span class="num" aria-hidden="true">5</span>Or choose each part yourself</h2>
-      <div class="tabs" role="tablist" id="tabs">
-        <button role="tab" data-tab="travel">Getting there</button>
-        <button role="tab" data-tab="stays">Places to stay</button>
-        <button role="tab" data-tab="ground">Cars &amp; shuttles</button>
-        <button role="tab" data-tab="activities">Things to do</button>
+    <section class="step" id="step-budget" data-step="3">
+      <h2 class="step-h"><button type="button" class="step-toggle" data-open-step="3" aria-expanded="false" aria-controls="body-3">
+        <span class="num" aria-hidden="true">3</span><span class="step-text"><span class="step-title">What’s your budget?</span><span class="step-sum" id="sum-3"></span></span><span class="step-cue" id="cue-3" aria-hidden="true"></span></button></h2>
+      <div class="step-body" id="body-3" hidden>
+        <p class="lead">For everyone in your party, for the whole trip. You can leave this blank to see everything.</p>
+        <form id="budget-form" autocomplete="off">
+          <label class="field field-wide"><span>Total budget for the whole trip</span>
+            <span class="money"><span aria-hidden="true">$</span><input type="number" inputmode="numeric" name="budget" min="0" step="50" placeholder="e.g. 3000" /></span>
+          </label>
+          <fieldset class="caps">
+            <legend>Want a limit for each part? <span class="optional">(optional)</span></legend>
+            <p class="hint">We’ll only show options under each limit. If you leave the total blank, your limits are added together to make your total budget.</p>
+            <div class="form-grid">
+              <label class="field"><span>Flights, at most</span><span class="money"><span aria-hidden="true">$</span><input type="number" inputmode="numeric" name="cap-travel" min="0" step="50" /></span></label>
+              <label class="field"><span>Place to stay, at most</span><span class="money"><span aria-hidden="true">$</span><input type="number" inputmode="numeric" name="cap-stay" min="0" step="50" /></span></label>
+              <label class="field"><span>Car or shuttle, at most</span><span class="money"><span aria-hidden="true">$</span><input type="number" inputmode="numeric" name="cap-ground" min="0" step="25" /></span></label>
+            </div>
+          </fieldset>
+        </form>
+        <div id="budget-notes" class="notes" aria-live="polite"></div>
+        <div class="step-next" id="next-3"></div>
       </div>
-      <div id="browse" role="tabpanel"></div>
     </section>
 
-    <!-- 6. My trip -->
-    <section class="step" id="step-mytrip" aria-labelledby="h-mytrip">
-      <h2 id="h-mytrip"><span class="num" aria-hidden="true">6</span>Your trip summary</h2>
-      <div id="mytrip"></div>
+    <!-- 4. Packages -->
+    <section class="step" id="step-options" data-step="4">
+      <h2 class="step-h"><button type="button" class="step-toggle" data-open-step="4" aria-expanded="false" aria-controls="body-4">
+        <span class="num" aria-hidden="true">4</span><span class="step-text"><span class="step-title">Choose a package</span><span class="step-sum" id="sum-4"></span></span><span class="step-cue" id="cue-4" aria-hidden="true"></span></button></h2>
+      <div class="step-body" id="body-4" hidden>
+        <div id="options"></div>
+        <div class="step-next" id="next-4"></div>
+      </div>
+    </section>
+
+    <!-- 5. Extras / change parts -->
+    <section class="step" id="step-browse" data-step="5">
+      <h2 class="step-h"><button type="button" class="step-toggle" data-open-step="5" aria-expanded="false" aria-controls="body-5">
+        <span class="num" aria-hidden="true">5</span><span class="step-text"><span class="step-title">Add things to do, or change any part</span><span class="step-sum" id="sum-5"></span></span><span class="step-cue" id="cue-5" aria-hidden="true"></span></button></h2>
+      <div class="step-body" id="body-5" hidden>
+        <p class="lead" id="browse-lead"></p>
+        <div class="tabs" role="tablist" id="tabs">
+          <button role="tab" data-tab="activities">Things to do</button>
+          <button role="tab" data-tab="travel">Getting there</button>
+          <button role="tab" data-tab="stays">Places to stay</button>
+          <button role="tab" data-tab="ground">Cars &amp; shuttles</button>
+        </div>
+        <div id="browse" role="tabpanel"></div>
+        <div class="step-next" id="next-5"></div>
+      </div>
+    </section>
+
+    <!-- 6. Summary -->
+    <section class="step" id="step-mytrip" data-step="6">
+      <h2 class="step-h"><button type="button" class="step-toggle" data-open-step="6" aria-expanded="false" aria-controls="body-6">
+        <span class="num" aria-hidden="true">6</span><span class="step-text"><span class="step-title">Your trip summary</span><span class="step-sum" id="sum-6"></span></span><span class="step-cue" id="cue-6" aria-hidden="true"></span></button></h2>
+      <div class="step-body" id="body-6" hidden>
+        <div id="mytrip"></div>
+        <div class="step-next" id="next-6"></div>
+      </div>
     </section>
   </main>
 
