@@ -1,0 +1,10 @@
+{
+  "name": "wedding-travel-planner",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Help wedding guests find flights, stays and car rentals, compare trips, and plan within their budget.",
+  "scripts": {
+    "test": "node --test tests/planner.test.js",
+    "start": "npx --yes serve ."
+  }
+}

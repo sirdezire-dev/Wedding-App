@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wedding Travel Planner</title>
+  <meta name="description" content="Find flights, hotels, villas, Airbnbs and car rentals for the wedding — and see everything you can do within your budget." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <p class="eyebrow">You're invited to celebrate</p>
+      <h1 id="couple"></h1>
+      <p class="hero-meta" id="hero-meta"></p>
+      <p class="countdown" id="countdown"></p>
+      <a href="#plan" class="btn btn-primary btn-lg">Plan my trip</a>
+    </div>
+  </header>
+
+  <main id="plan">
+    <!-- STEP 1: Trip basics -->
+    <section class="card setup" aria-labelledby="setup-title">
+      <div class="section-head">
+        <h2 id="setup-title"><span class="step">1</span> Tell us about your trip</h2>
+        <p class="muted">Everything below updates instantly for your dates, party size and budget.</p>
+      </div>
+      <form id="trip-form" class="setup-grid" autocomplete="off">
+        <label class="field">
+          <span>Flying from</span>
+          <select name="origin" id="origin"></select>
+        </label>
+        <label class="field" id="origin-other-wrap" hidden>
+          <span>Your airport code</span>
+          <input name="originOther" id="origin-other" maxlength="4" placeholder="e.g. BOS" />
+        </label>
+        <label class="field">
+          <span>Arrive</span>
+          <input type="date" name="arrive" />
+        </label>
+        <label class="field">
+          <span>Leave</span>
+          <input type="date" name="depart" />
+        </label>
+        <label class="field">
+          <span>Travelers in your party</span>
+          <input type="number" name="travelers" min="1" max="20" />
+        </label>
+        <label class="field">
+          <span>People sharing costs <i class="hint" title="If you're splitting a villa, Airbnb or car with other guests, enter how many people are in the whole group. Lodging and car costs are split fairly by headcount.">?</i></span>
+          <input type="number" name="groupSize" min="1" max="40" />
+        </label>
+        <label class="field field-budget">
+          <span>Your total budget</span>
+          <div class="money-input"><span class="cur" id="cur-symbol">$</span><input type="number" name="budget" min="0" step="50" /></div>
+        </label>
+      </form>
+      <div id="trip-notes" class="trip-notes"></div>
+    </section>
+
+    <!-- Sticky budget meter -->
+    <section class="budget-bar" id="budget-bar" aria-live="polite"></section>
+
+    <!-- STEP 2: Explore -->
+    <section class="card explore" aria-labelledby="explore-title">
+      <div class="section-head">
+        <h2 id="explore-title"><span class="step">2</span> Explore &amp; build your trip</h2>
+      </div>
+      <nav class="tabs" role="tablist" id="tabs">
+        <button role="tab" data-tab="finder">✨ What fits my budget</button>
+        <button role="tab" data-tab="flights">✈️ Flights</button>
+        <button role="tab" data-tab="stays">🏨 Stays</button>
+        <button role="tab" data-tab="cars">🚗 Cars &amp; transport</button>
+        <button role="tab" data-tab="activities">🌴 Things to do</button>
+        <button role="tab" data-tab="compare">⚖️ Compare trips <span class="badge" id="compare-count"></span></button>
+      </nav>
+      <div id="panel" class="panel" role="tabpanel"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Prices are estimates provided by the couple — always confirm the final price on the booking site.</p>
+    <p class="muted" id="footer-tag"></p>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="data/wedding.js"></script>
+  <script src="js/planner.js"></script>
+  <script src="js/links.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
