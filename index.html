@@ -4,92 +4,134 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Wedding Travel Planner</title>
-  <meta name="description" content="Find flights, hotels, villas, Airbnbs and car rentals for the wedding — and see everything you can do within your budget." />
+  <meta name="description" content="Plan your trip to the wedding in Moab, Utah: flights, places to stay, rental cars and things to do, all within your budget." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
+  <a class="skip-link" href="#step-home">Skip to trip planning</a>
+
+  <div class="text-size" role="group" aria-label="Text size">
+    <span>Text size</span>
+    <button type="button" data-text-size="normal" aria-pressed="true">A</button>
+    <button type="button" data-text-size="large" aria-pressed="false" class="larger">A</button>
+  </div>
+
   <header class="hero">
-    <div class="hero-inner">
-      <p class="eyebrow">You're invited to celebrate</p>
-      <h1 id="couple"></h1>
-      <p class="hero-meta" id="hero-meta"></p>
-      <p class="countdown" id="countdown"></p>
-      <a href="#plan" class="btn btn-primary btn-lg">Plan my trip</a>
-    </div>
+    <p class="eyebrow">Please join us in the desert</p>
+    <h1 id="couple"></h1>
+    <p class="hero-date" id="hero-date"></p>
+    <p class="hero-venue" id="hero-venue"></p>
+    <p class="hero-countdown" id="countdown"></p>
+    <a href="#step-home" class="btn btn-primary btn-xl">Start planning my trip</a>
   </header>
 
-  <main id="plan">
-    <!-- STEP 1: Trip basics -->
-    <section class="card setup" aria-labelledby="setup-title">
-      <div class="section-head">
-        <h2 id="setup-title"><span class="step">1</span> Tell us about your trip</h2>
-        <p class="muted">Everything below updates instantly for your dates, party size and budget.</p>
-      </div>
-      <form id="trip-form" class="setup-grid" autocomplete="off">
-        <label class="field">
-          <span>Flying from</span>
-          <select name="origin" id="origin"></select>
-        </label>
-        <label class="field" id="origin-other-wrap" hidden>
-          <span>Your airport code</span>
-          <input name="originOther" id="origin-other" maxlength="4" placeholder="e.g. BOS" />
-        </label>
-        <label class="field">
-          <span>Arrive</span>
-          <input type="date" name="arrive" />
-        </label>
-        <label class="field">
-          <span>Leave</span>
-          <input type="date" name="depart" />
-        </label>
-        <label class="field">
-          <span>Travelers in your party</span>
-          <input type="number" name="travelers" min="1" max="20" />
-        </label>
-        <label class="field">
-          <span>People sharing costs <i class="hint" title="If you're splitting a villa, Airbnb or car with other guests, enter how many people are in the whole group. Lodging and car costs are split fairly by headcount.">?</i></span>
-          <input type="number" name="groupSize" min="1" max="40" />
-        </label>
-        <label class="field field-budget">
-          <span>Your total budget</span>
-          <div class="money-input"><span class="cur" id="cur-symbol">$</span><input type="number" name="budget" min="0" step="50" /></div>
-        </label>
+  <main>
+    <!-- 1. Where from -->
+    <section class="step" id="step-home" aria-labelledby="h-home">
+      <h2 id="h-home"><span class="num" aria-hidden="true">1</span>Where are you traveling from?</h2>
+      <p class="lead">Type your home address, town or ZIP code. We’ll find your nearest airports and every way to get here.</p>
+      <form id="home-form" class="search-row" role="search">
+        <label for="home-q" class="sr-only">Your home address, town or ZIP code</label>
+        <input id="home-q" name="q" type="text" autocomplete="street-address" placeholder="For example: 12 Oak Street, Columbus, Ohio" />
+        <button class="btn btn-primary" type="submit">Search</button>
       </form>
-      <div id="trip-notes" class="trip-notes"></div>
+      <button type="button" class="btn btn-quiet" id="geo-btn">Use my current location instead</button>
+      <div id="home-results" aria-live="polite"></div>
     </section>
 
-    <!-- Sticky budget meter -->
-    <section class="budget-bar" id="budget-bar" aria-live="polite"></section>
+    <!-- 2. When & who -->
+    <section class="step" id="step-when" aria-labelledby="h-when">
+      <h2 id="h-when"><span class="num" aria-hidden="true">2</span>When are you coming, and who’s coming with you?</h2>
+      <p class="lead" id="when-lead"></p>
+      <form id="when-form" class="form-grid" autocomplete="off">
+        <label class="field"><span>Day you arrive</span><input type="date" name="arrive" /></label>
+        <label class="field"><span>Day you leave</span><input type="date" name="depart" /></label>
+        <div class="field">
+          <span id="lbl-travelers">Number of people in your party</span>
+          <div class="stepper" role="group" aria-labelledby="lbl-travelers">
+            <button type="button" data-stepper="travelers" data-delta="-1" aria-label="One fewer person">−</button>
+            <output id="out-travelers" aria-live="polite"></output>
+            <button type="button" data-stepper="travelers" data-delta="1" aria-label="One more person">+</button>
+          </div>
+        </div>
+      </form>
+      <details class="more" id="sharing">
+        <summary>Sharing a house, room or car with other guests?</summary>
+        <p>Tell us how many people are in your whole group, and we’ll split the cost of the place to stay and the car fairly, by person.</p>
+        <div class="field">
+          <span id="lbl-group">People in the whole group (including you)</span>
+          <div class="stepper" role="group" aria-labelledby="lbl-group">
+            <button type="button" data-stepper="groupSize" data-delta="-1" aria-label="One fewer person in the group">−</button>
+            <output id="out-groupSize" aria-live="polite"></output>
+            <button type="button" data-stepper="groupSize" data-delta="1" aria-label="One more person in the group">+</button>
+          </div>
+        </div>
+      </details>
+      <div id="when-notes" class="notes" aria-live="polite"></div>
+    </section>
 
-    <!-- STEP 2: Explore -->
-    <section class="card explore" aria-labelledby="explore-title">
-      <div class="section-head">
-        <h2 id="explore-title"><span class="step">2</span> Explore &amp; build your trip</h2>
+    <!-- 3. Budget -->
+    <section class="step" id="step-budget" aria-labelledby="h-budget">
+      <h2 id="h-budget"><span class="num" aria-hidden="true">3</span>What’s your budget?</h2>
+      <p class="lead">For everyone in your party, for the whole trip. You can leave this blank to see everything.</p>
+      <form id="budget-form" autocomplete="off">
+        <label class="field field-wide"><span>Total budget for the whole trip</span>
+          <span class="money"><span aria-hidden="true">$</span><input type="number" inputmode="numeric" name="budget" min="0" step="50" placeholder="e.g. 3000" /></span>
+        </label>
+        <fieldset class="caps">
+          <legend>Want a limit for each part? <span class="optional">(optional)</span></legend>
+          <p class="hint">We’ll only show options under each limit. If you leave the total blank, your limits are added together to make your total budget.</p>
+          <div class="form-grid">
+            <label class="field"><span>Flights, at most</span><span class="money"><span aria-hidden="true">$</span><input type="number" inputmode="numeric" name="cap-travel" min="0" step="50" /></span></label>
+            <label class="field"><span>Place to stay, at most</span><span class="money"><span aria-hidden="true">$</span><input type="number" inputmode="numeric" name="cap-stay" min="0" step="50" /></span></label>
+            <label class="field"><span>Car or shuttle, at most</span><span class="money"><span aria-hidden="true">$</span><input type="number" inputmode="numeric" name="cap-ground" min="0" step="25" /></span></label>
+          </div>
+        </fieldset>
+      </form>
+      <div id="budget-notes" class="notes" aria-live="polite"></div>
+    </section>
+
+    <!-- 4. Options -->
+    <section class="step" id="step-options" aria-labelledby="h-options">
+      <h2 id="h-options"><span class="num" aria-hidden="true">4</span>Your trip options</h2>
+      <div id="options"></div>
+    </section>
+
+    <!-- 5. Choose parts -->
+    <section class="step" id="step-browse" aria-labelledby="h-browse">
+      <h2 id="h-browse"><span class="num" aria-hidden="true">5</span>Or choose each part yourself</h2>
+      <div class="tabs" role="tablist" id="tabs">
+        <button role="tab" data-tab="travel">Getting there</button>
+        <button role="tab" data-tab="stays">Places to stay</button>
+        <button role="tab" data-tab="ground">Cars &amp; shuttles</button>
+        <button role="tab" data-tab="activities">Things to do</button>
       </div>
-      <nav class="tabs" role="tablist" id="tabs">
-        <button role="tab" data-tab="finder">✨ What fits my budget</button>
-        <button role="tab" data-tab="flights">✈️ Flights</button>
-        <button role="tab" data-tab="stays">🏨 Stays</button>
-        <button role="tab" data-tab="cars">🚗 Cars &amp; transport</button>
-        <button role="tab" data-tab="activities">🌴 Things to do</button>
-        <button role="tab" data-tab="compare">⚖️ Compare trips <span class="badge" id="compare-count"></span></button>
-      </nav>
-      <div id="panel" class="panel" role="tabpanel"></div>
+      <div id="browse" role="tabpanel"></div>
+    </section>
+
+    <!-- 6. My trip -->
+    <section class="step" id="step-mytrip" aria-labelledby="h-mytrip">
+      <h2 id="h-mytrip"><span class="num" aria-hidden="true">6</span>Your trip, and how to book it</h2>
+      <div id="mytrip"></div>
     </section>
   </main>
 
   <footer class="footer">
-    <p>Prices are estimates provided by the couple — always confirm the final price on the booking site.</p>
-    <p class="muted" id="footer-tag"></p>
+    <p id="footer-help"></p>
+    <p>Prices are estimates for late May. You’ll always see the real price on the booking site before you pay.</p>
+    <p>Your address and plans stay on this device. Address search uses OpenStreetMap.</p>
   </footer>
 
+  <div class="tripbar" id="tripbar" aria-live="polite" hidden></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="data/wedding.js"></script>
+  <script src="data/airports.js"></script>
   <script src="js/planner.js"></script>
+  <script src="js/travel.js"></script>
   <script src="js/links.js"></script>
   <script src="js/app.js"></script>
 </body>
