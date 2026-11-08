@@ -26,6 +26,12 @@
     ];
   }
 
+  /** Google Flights search to an airport, with or without a home airport. */
+  function flightTo({ from, to, arrive, depart, travelers }) {
+    const q = `Flights ${from ? `from ${from} ` : ''}to ${to} on ${arrive} through ${depart} ${travelers} adults`;
+    return `https://www.google.com/travel/flights?q=${enc(q)}`;
+  }
+
   /** Where to book a particular stay. Uses the couple's link when there is one. */
   function stay(s, { place, arrive, depart, travelers }) {
     if (s.url) return [{ label: 'Book this place', url: s.url }];
@@ -81,5 +87,5 @@
     ];
   }
 
-  root.Links = { flight, stay, staySearch, car, transfer, drive, venueMap, activitySearch };
+  root.Links = { flight, flightTo, stay, staySearch, car, transfer, drive, venueMap, activitySearch };
 })(window);

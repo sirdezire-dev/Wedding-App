@@ -73,6 +73,18 @@ a { color: var(--accent); text-underline-offset: 3px; }
 .hero-venue { font-size: 1.1rem; }
 .hero-countdown { color: var(--muted); margin-bottom: 1.6em; }
 
+/* ---------- Quick booking ---------- */
+.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.btn-light { background: transparent; }
+.quick { border: 2px solid var(--accent); }
+.quick h2 { margin-bottom: .3em; }
+.quick-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 18px; }
+.quick-tile { border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; background: var(--bg); }
+.quick-tile h3 { font-family: var(--serif); font-weight: 600; font-size: 1.6rem; margin-bottom: .2em; }
+.quick-btns { display: grid; gap: 10px; margin-top: auto; padding-top: 8px; }
+.divider { text-align: center; margin: 8px 0 28px; color: var(--muted); font-size: 1.1rem; display: flex; align-items: center; gap: 16px; }
+.divider::before, .divider::after { content: ''; flex: 1; border-top: 1px solid var(--line); }
+
 /* ---------- Layout ---------- */
 main { max-width: 920px; margin: 0 auto; padding: 0 16px 48px; }
 .step {
@@ -335,7 +347,7 @@ table.compare { width: 100%; min-width: 520px; border-collapse: collapse; }
 /* ---------- Print: just the plan ---------- */
 @media print {
   .hero, .text-size, .skip-link, #step-home, #step-when, #step-budget, #step-options, #step-browse,
-  .tripbar, .toast, .btn-row, .check, .footer { display: none !important; }
+  #quick, .divider, .tripbar, .toast, .btn-row, .check, .footer { display: none !important; }
   body { background: #fff; padding: 0; font-size: 12pt; }
   .step { box-shadow: none; border: 0; padding: 0; }
   .book-step { break-inside: avoid; }

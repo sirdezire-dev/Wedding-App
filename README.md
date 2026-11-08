@@ -28,8 +28,17 @@ The flight fares and travel times are **estimates**, worked out from distance, n
 - `stays`: add room-block codes with `perk: '...'` and your own booking links with `url: '...'`. Check the prices and the minutes to the venue.
 - `cars`, `transfers`, `activities`: prices and notes
 
-## Run it, test it, publish it
+## Share it with guests (free, works on any phone)
+
+The site is hosted for free with GitHub Pages. Guests only need the link: no app, no account and no Claude.
+
+**One-time setup:** on GitHub, open the repository, then go to **Settings → Pages**. Under *Build and deployment*, choose **Deploy from a branch**, pick the branch `claude/wedding-guest-travel-planner-0i8xpc` and the `/ (root)` folder, then click **Save**. After a minute or two, the site is live at:
+
+**https://sirdezire-dev.github.io/Wedding-App/**
+
+Text or email that link, or put it on your invitations (a QR code works too). Updates go live automatically a minute after each change.
+
+## Run it locally and test
 
 - Open `index.html` in a browser, or run `npm start`.
 - Run the tests with `npm test`.
-- To publish for free: go to GitHub **Settings → Pages**, choose *Deploy from a branch*, pick this branch and `/ (root)`, and save. Share the link with your guests.

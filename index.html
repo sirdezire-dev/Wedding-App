@@ -3,8 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Wedding Travel Planner</title>
-  <meta name="description" content="Plan your trip to the wedding in Moab, Utah: flights, places to stay, rental cars and things to do, all within your budget." />
+  <title>Deividas &amp; Gina · Travel Planner</title>
+  <meta name="description" content="Book your trip to Deividas &amp; Gina’s wedding in Moab, Utah, May 27–29, 2027: flights, hotels, Airbnbs, rental cars and things to do." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Deividas &amp; Gina · Wedding Travel" />
+  <meta property="og:description" content="May 27–29, 2027 at The Red Earth Venue, Moab, Utah. Find and book your flights, hotel and car here." />
+  <meta name="theme-color" content="#9a4a2c" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%239a4a2c'/%3E%3Ctext x='32' y='42' font-size='28' text-anchor='middle' fill='white' font-family='Georgia'%3ED%26G%3C/text%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
@@ -25,10 +30,21 @@
     <p class="hero-date" id="hero-date"></p>
     <p class="hero-venue" id="hero-venue"></p>
     <p class="hero-countdown" id="countdown"></p>
-    <a href="#step-home" class="btn btn-primary btn-xl">Start planning my trip</a>
+    <div class="hero-actions">
+      <a href="#quick" class="btn btn-primary btn-xl">Book my trip</a>
+      <a href="#step-home" class="btn btn-xl btn-light">Help me plan it first</a>
+    </div>
   </header>
 
   <main>
+    <!-- Quick booking -->
+    <section class="step quick" id="quick" aria-labelledby="h-quick">
+      <h2 id="h-quick">Book your trip</h2>
+      <div id="quick-body"></div>
+    </section>
+
+    <div class="divider"><span>Not sure what to book? We’ll help you choose, step by step.</span></div>
+
     <!-- 1. Where from -->
     <section class="step" id="step-home" aria-labelledby="h-home">
       <h2 id="h-home"><span class="num" aria-hidden="true">1</span>Where are you traveling from?</h2>
@@ -96,7 +112,7 @@
 
     <!-- 4. Options -->
     <section class="step" id="step-options" aria-labelledby="h-options">
-      <h2 id="h-options"><span class="num" aria-hidden="true">4</span>Your trip options</h2>
+      <h2 id="h-options"><span class="num" aria-hidden="true">4</span>Pick a trip to book</h2>
       <div id="options"></div>
     </section>
 
@@ -114,12 +130,13 @@
 
     <!-- 6. My trip -->
     <section class="step" id="step-mytrip" aria-labelledby="h-mytrip">
-      <h2 id="h-mytrip"><span class="num" aria-hidden="true">6</span>Your trip, and how to book it</h2>
+      <h2 id="h-mytrip"><span class="num" aria-hidden="true">6</span>Book your trip</h2>
       <div id="mytrip"></div>
     </section>
   </main>
 
   <footer class="footer">
+    <p><button type="button" class="btn" id="share-btn">Share this page with family</button></p>
     <p id="footer-help"></p>
     <p>Prices are estimates for late May. You’ll always see the real price on the booking site before you pay.</p>
     <p>Your address and plans stay on this device. Address search uses OpenStreetMap.</p>

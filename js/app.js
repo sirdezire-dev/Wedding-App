@@ -191,6 +191,42 @@
     document.querySelectorAll('[data-text-size]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.textSize === state.textSize)));
   }
 
+  // ---------------------------------------------------------------- quick booking
+  function renderQuick() {
+    const t = trip();
+    const n = P.nights(t.arrive, t.depart);
+    const from = state.origins[0] || '';
+    const ok = n > 0;
+    const d = { arrive: t.arrive, depart: t.depart, travelers: t.travelers };
+    const tile = (title, hint, links) => `
+      <div class="quick-tile">
+        <h3>${title}</h3>
+        <p class="muted">${hint}</p>
+        <div class="quick-btns">${linkButtons(links.slice(0, 1), 'btn-primary')}${linkButtons(links.slice(1))}</div>
+      </div>`;
+    $('#quick-body').innerHTML = `
+      <p class="lead">Each button opens the booking website with the wedding dates already filled in:
+        <b>${ok ? `${niceDate(t.arrive, true)} to ${niceDate(t.depart, true)}` : 'choose your dates in step 2'}</b>, ${plural(t.travelers, 'person', 'people')}.
+        <a href="#step-when">Change dates or people</a></p>
+      <div class="quick-grid">
+        ${tile('Flights', `Salt Lake City has the most flights (3¾ hours’ drive). Moab’s own airport is 15 minutes away but has few flights.${from ? ` Searching from ${esc(airportLabel(from))}.` : ''}`, [
+          { label: 'Flights to Salt Lake City', url: L.flightTo({ from, to: 'SLC', ...d }) },
+          { label: 'Flights to Moab', url: L.flightTo({ from, to: 'CNY', ...d }) },
+          { label: 'Flights to Grand Junction', url: L.flightTo({ from, to: 'GJT', ...d }) },
+        ])}
+        ${tile('Hotels', 'Hotels in Moab, about 15–20 minutes from the venue.', [
+          { label: 'Hotels on Booking.com', url: L.staySearch({ place: W.venue.searchName, ...d })[0].url },
+          { label: 'Google Hotels', url: `https://www.google.com/travel/search?q=${encodeURIComponent(`hotels in ${W.venue.searchName}`)}&checkin=${t.arrive}&checkout=${t.depart}` },
+        ])}
+        ${tile('Airbnbs & vacation homes', 'Good for families or groups sharing a house.', L.staySearch({ place: W.venue.searchName, ...d, travelers: t.groupSize }).slice(1))}
+        ${tile('Rental cars', 'You’ll need a car in Moab. Pick it up at the airport you fly into.', [
+          { label: 'Cars at Salt Lake City', url: L.car({ airport: 'SLC', arrive: t.arrive, depart: t.depart })[0].url },
+          { label: 'Cars at Moab airport', url: L.car({ airport: 'CNY', arrive: t.arrive, depart: t.depart })[0].url },
+          { label: 'Cars at Grand Junction', url: L.car({ airport: 'GJT', arrive: t.arrive, depart: t.depart })[0].url },
+        ])}
+      </div>`;
+  }
+
   // ---------------------------------------------------------------- step 1: home
   function renderHome() {
     const el = $('#home-results');
@@ -406,8 +442,8 @@
         <p class="tc-door">Door to venue: ${hoursText(p.doorMinutes)} each way</p>
         ${extras}
         <div class="tc-actions">
-          <button type="button" class="btn btn-primary" data-action="use-package" data-id="${esc(p.id)}">${isChosen ? 'Chosen ✓' : 'Choose this trip'}</button>
-          <button type="button" class="btn" data-action="save-package" data-id="${esc(p.id)}">Save to compare</button>
+          <button type="button" class="btn btn-primary" data-action="use-package" data-id="${esc(p.id)}">${isChosen ? 'Chosen ✓ — see booking steps' : 'Book this trip'}</button>
+          <button type="button" class="btn btn-quiet" data-action="save-package" data-id="${esc(p.id)}">Save to compare later</button>
         </div>
       </article>`;
   }
@@ -435,8 +471,13 @@
       .join('')}</div>`;
   }
 
-  function choiceButton(slot, id, isSel, label = 'Choose') {
-    return `<button type="button" class="btn ${isSel ? 'btn-chosen' : 'btn-primary'}" data-action="pick" data-slot="${slot}" data-id="${esc(id)}" aria-pressed="${isSel}">${isSel ? 'Chosen ✓' : label}</button>`;
+  function choiceButton(slot, id, isSel, label = 'Add to my plan') {
+    return `<button type="button" class="btn ${isSel ? 'btn-chosen' : ''}" data-action="pick" data-slot="${slot}" data-id="${esc(id)}" aria-pressed="${isSel}">${isSel ? 'In my plan ✓' : label}</button>`;
+  }
+
+  /** The main "Book on …" button for an option. */
+  function bookButton(links) {
+    return linkButtons(links.slice(0, 1).map((l) => ({ ...l, label: /^Book/.test(l.label) ? l.label : `Book on ${l.label}` })), 'btn-primary');
   }
 
   function browseTravel() {
@@ -470,7 +511,7 @@
           <p>${esc(travelLine(o))}.</p>
           <p class="muted">No flights and no rental car needed. Fuel is estimated at 17¢ a mile.</p>
           ${fitNote('travel', o, cost)}
-          <div class="card-actions">${choiceButton('travel', o.id, isSel)}${linkButtons(L.drive(state.home, W.venue))}</div>
+          <div class="card-actions">${linkButtons(L.drive(state.home, W.venue), 'btn-primary')}${choiceButton('travel', o.id, isSel)}</div>
         </article>`;
     }
     const arrival = AIRPORT[o.to];
@@ -485,8 +526,8 @@
         ${o.custom ? '<p class="tag">Added by you</p>' : o.estimated ? '<p class="tag">Estimated price — check the live price</p>' : ''}
         ${fitNote('travel', o, cost)}
         <div class="card-actions">
+          ${bookButton(o.url && safeUrl(o.url) ? [{ label: 'Book this flight', url: o.url }] : L.flight({ from: o.from, to: o.to, arrive: t.arrive, depart: t.depart, travelers: t.travelers, stops: o.stops }))}
           ${choiceButton('travel', o.id, isSel)}
-          ${o.url && safeUrl(o.url) ? linkButtons([{ label: 'Book', url: o.url }]) : linkButtons(L.flight({ from: o.from, to: o.to, arrive: t.arrive, depart: t.depart, travelers: t.travelers, stops: o.stops }).slice(0, 1), '')}
           ${o.custom ? `<button type="button" class="btn btn-quiet" data-action="remove-custom" data-kind="flights" data-id="${esc(o.id)}">Remove</button>` : ''}
         </div>
       </article>`;
@@ -548,8 +589,8 @@
         ${s.custom ? '<p class="tag">Added by you</p>' : ''}
         ${fitNote('stay', s, cost)}
         <div class="card-actions">
+          ${bookButton(L.stay(s, { place: W.venue.searchName, arrive: t.arrive, depart: t.depart, travelers: t.groupSize }))}
           ${choiceButton('stay', s.id, isSel)}
-          ${linkButtons(L.stay(s, { place: W.venue.searchName, arrive: t.arrive, depart: t.depart, travelers: t.groupSize }).slice(0, 1))}
           ${s.custom ? `<button type="button" class="btn btn-quiet" data-action="remove-custom" data-kind="stays" data-id="${esc(s.id)}">Remove</button>` : ''}
         </div>
       </article>`;
@@ -586,8 +627,8 @@
         ${g.note ? `<p class="perk">${esc(g.note)}</p>` : ''}
         ${fitNote('ground', g, cost)}
         <div class="card-actions">
+          ${bookButton(g.kind === 'car' ? L.car({ airport: g.airport, arrive: t.arrive, depart: t.depart }) : L.transfer(g, W.venue))}
           ${choiceButton('ground', g.id, isSel)}
-          ${linkButtons(g.kind === 'car' ? L.car({ airport: g.airport, arrive: t.arrive, depart: t.depart }).slice(0, 1) : L.transfer(g, W.venue))}
         </div>
       </article>`;
   }
@@ -651,7 +692,7 @@
     const any = sel.travel || sel.stay || sel.ground || sel.activities.length;
 
     if (!any) {
-      el.innerHTML = `<div class="empty">Choose a trip in step 4, or pick each part in step 5. Your plan and booking steps will appear here.</div>${compareTable()}`;
+      el.innerHTML = `<div class="empty">Pick a trip in step 4, or add parts in step 5. Your booking buttons will appear here, one step at a time.</div>${compareTable()}`;
       return;
     }
 
@@ -712,7 +753,7 @@
       <div class="btn-row">
         <button type="button" class="btn" data-action="print">Print my plan</button>
         <button type="button" class="btn" data-action="copy">Copy my plan to send to the couple</button>
-        <button type="button" class="btn" data-action="save-trip">Save to compare</button>
+
         <button type="button" class="btn btn-quiet" data-action="clear">Start over</button>
       </div>
       ${compareTable()}`;
@@ -723,7 +764,7 @@
     return `<li class="book-step ${done ? 'done' : ''}">
       <h4>${title}</h4>
       <p>${text}</p>
-      <div class="btn-row">${linkButtons(links, 'btn-book')}</div>
+      <div class="btn-row">${linkButtons(links.slice(0, 1), 'btn-book btn-primary')}${linkButtons(links.slice(1), 'btn-book')}</div>
       <label class="check"><input type="checkbox" data-action="booked" data-key="${key}" ${done ? 'checked' : ''}/> I’ve booked this</label>
     </li>`;
   }
@@ -736,7 +777,7 @@
     const cell = (x, html, cls = '') => `<td class="${cls}">${html}</td>`;
     const row = (label, fn) => `<tr><th scope="row">${label}</th>${trips.map(fn).join('')}</tr>`;
     return `
-      <h3 class="sub-h" id="compare">Compare your saved trips</h3>
+      <details class="more" id="compare"><summary>Compare your ${plural(trips.length, 'saved trip')}</summary>
       <div class="table-wrap"><table class="compare">
         <thead><tr><th></th>${trips.map((x) => `<th scope="col">${esc(x.name)}<div class="btn-row tight">
           <button type="button" class="btn btn-small" data-action="load-saved" data-id="${x.id}">Choose</button>
@@ -754,7 +795,7 @@
           <tr class="total"><th scope="row">Total</th>${trips.map((x) => cell(x, fmt(x.cost.total), best(x.cost.total, min((y) => y.cost.total)))).join('')}</tr>
         </tbody>
       </table></div>
-      <p class="muted">The best value in each row is highlighted.</p>`;
+      <p class="muted">The best value in each row is highlighted.</p></details>`;
   }
 
   function saveTrip(sel) {
@@ -774,7 +815,7 @@
     });
     save();
     renderAll();
-    toast('Saved. You’ll find it at the bottom of step 6.');
+    toast('Saved. Compare it at the bottom of step 6.');
   }
 
   function planText() {
@@ -980,7 +1021,7 @@
         state.booked = {};
         save();
         renderAll();
-        toast('Great choice! Here’s how to book it. Add things to do in step 5.');
+        toast('Great choice! Book each part below.');
         $('#step-mytrip').scrollIntoView({ behavior: 'smooth' });
         return;
       }
@@ -1071,6 +1112,7 @@
 
   // ---------------------------------------------------------------- boot
   function renderAll() {
+    renderQuick();
     renderHome();
     renderWhen();
     renderBudgetNotes();
@@ -1080,6 +1122,14 @@
     renderMyTrip();
     renderTripBar();
   }
+
+  $('#share-btn').addEventListener('click', () => {
+    const url = location.href.split('#')[0];
+    const data = { title: document.title, text: `Book your trip to ${W.couple}’s wedding in ${W.venue.city}:`, url };
+    if (navigator.share) navigator.share(data).catch(() => {});
+    else if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => toast('Link copied — paste it into a text or email.'));
+    else prompt('Copy this link:', url);
+  });
 
   document.addEventListener('click', onClick);
   document.addEventListener('change', onChange);
