@@ -219,11 +219,46 @@ details.more > summary::marker { color: var(--accent); }
 .tc-total { text-align: right; }
 .tc-total span { display: block; font-size: 1.9rem; font-weight: 700; line-height: 1.1; }
 .tc-total small { color: var(--muted); font-size: .9rem; }
-.tc-parts { margin: 16px 0 10px; display: grid; gap: 0; }
-.tc-parts > div { display: grid; grid-template-columns: 150px 1fr auto; gap: 4px 16px; padding: 12px 0; border-top: 1px solid var(--line); }
-.tc-parts dt { font-weight: 700; color: var(--muted); }
-.tc-parts dd { margin: 0; }
-.tc-parts .amt { font-weight: 700; text-align: right; white-space: nowrap; }
+.tc-parts { margin: 16px 0 10px; }
+.tc-part { padding: 14px 0; border-top: 1px solid var(--line); }
+.tc-part p { margin: 0 0 .4em; }
+.tc-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.tc-row h4 { font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.amt { font-weight: 700; font-size: 1.15rem; text-align: right; white-space: nowrap; margin: 0; }
+.price-tag { display: block; font-size: .78rem; font-weight: 600; color: var(--muted); }
+.price-tag.found { color: var(--good); }
+.tc-level { margin: 0; color: var(--accent); font-weight: 700; letter-spacing: .15em; }
+.tc-extra.over { background: var(--bad-soft); color: var(--bad); }
+.swap { display: flex; flex-direction: column; gap: 4px; margin: 10px 0 4px; font-weight: 700; font-size: .95rem; }
+.swap select { font-size: 1rem; min-height: 52px; }
+.live-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 16px; margin-top: 6px; }
+details.found > summary { cursor: pointer; color: var(--accent-dark); font-weight: 600; min-height: 44px; display: flex; align-items: center; text-decoration: underline; text-underline-offset: 3px; }
+.found-form { display: grid; gap: 8px; padding: 12px; margin-top: 4px; border-radius: 12px; background: var(--surface-2); max-width: 360px; }
+
+/* ---------- Trip map ---------- */
+.trip-map-wrap { margin-top: 12px; }
+.trip-map { height: 340px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface-2); z-index: 0; }
+.trip-map.is-missing { height: auto; padding: 16px; }
+.map-btns { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0; }
+.map-key { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: .9rem; margin-left: auto; }
+.map-key .k { display: inline-block; width: 28px; height: 0; border-top: 4px solid var(--sage); margin-left: 8px; }
+.map-key .k.fly { border-top: 3px dashed var(--accent); }
+.route-steps { margin: 8px 0 12px; padding-left: 1.4em; display: grid; gap: 6px; }
+.leaflet-tooltip.map-label { font: 600 13px var(--sans); padding: 3px 8px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+.leaflet-tooltip.map-venue { background: var(--sage); color: #fff; border-color: var(--sage); }
+.leaflet-tooltip.map-venue::before { border-left-color: var(--sage); }
+.leaflet-tooltip.map-stay { background: #1f5fbf; color: #fff; border-color: #1f5fbf; }
+.leaflet-tooltip.map-stay::before { border-right-color: #1f5fbf; }
+
+/* ---------- Summary ---------- */
+.sum-list { list-style: none; padding: 0; margin: 18px 0; display: grid; gap: 14px; }
+.sum-item { border: 2px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+.sum-item.done { border-color: var(--good); background: var(--good-soft); }
+.sum-item.missing { border-style: dashed; }
+.sum-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 6px; }
+.sum-kind { margin: 0; font-size: .85rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); }
+.sum-head h4 { font-size: 1.2rem; }
+.sum-total { margin: 8px 0 16px; max-width: 520px; }
 .tc-door { font-weight: 600; margin: 4px 0 8px; }
 .tc-extra { background: var(--good-soft); color: var(--good); padding: 10px 14px; border-radius: 10px; }
 .tc-extra.plain { background: var(--surface-2); color: var(--text); }
@@ -327,8 +362,8 @@ table.compare { width: 100%; min-width: 520px; border-collapse: collapse; }
   .tabs { grid-template-columns: 1fr 1fr; }
   .tc-head, .card-head { flex-direction: column; }
   .tc-total, .price { text-align: left; }
-  .tc-parts > div { grid-template-columns: 1fr auto; }
-  .tc-parts dt { grid-column: 1 / -1; }
+  .trip-map { height: 300px; }
+  .map-key { margin-left: 0; }
   .schedule li { grid-template-columns: 1fr; gap: 2px; }
   .mytrip { grid-template-columns: 1fr; }
   .book-step { padding-left: 20px; padding-top: 70px; }
@@ -347,7 +382,8 @@ table.compare { width: 100%; min-width: 520px; border-collapse: collapse; }
 /* ---------- Print: just the plan ---------- */
 @media print {
   .hero, .text-size, .skip-link, #step-home, #step-when, #step-budget, #step-options, #step-browse,
-  #quick, .divider, .tripbar, .toast, .btn-row, .check, .footer { display: none !important; }
+  #quick, .divider, .tripbar, .toast, .btn-row, .check, .footer, .map-btns, .trip-map-wrap > .btn, .leaflet-control-zoom { display: none !important; }
+  .sum-item { break-inside: avoid; }
   body { background: #fff; padding: 0; font-size: 12pt; }
   .step { box-shadow: none; border: 0; padding: 0; }
   .book-step { break-inside: avoid; }

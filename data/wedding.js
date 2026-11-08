@@ -55,20 +55,21 @@
     // taxRate 0.13 = 13% lodging tax; cleaningFee = one-time per room or home
     // perk: optional text, e.g. 'Wedding room block — mention the Smith wedding'
     // url: optional booking link. Without one, the site builds a search for the guest's dates.
+    // lat/lon: approximate location, used for the trip map.
     stays: [
-      { id: 's-hoodoo', type: 'hotel', name: 'Hoodoo Moab, Curio Collection by Hilton', nightly: 349, maxGuests: 2, taxRate: 0.13, rating: 4.6, minutesToVenue: 18, amenities: ['Pool', 'Restaurant', 'Walk to downtown'] },
-      { id: 's-hyatt', type: 'hotel', name: 'Hyatt Place Moab', nightly: 289, maxGuests: 4, taxRate: 0.13, rating: 4.5, minutesToVenue: 15, amenities: ['Free breakfast', 'Elevator', 'Pool'] },
-      { id: 's-hampton', type: 'hotel', name: 'Hampton Inn Moab', nightly: 259, maxGuests: 4, taxRate: 0.13, rating: 4.4, minutesToVenue: 16, amenities: ['Free breakfast', 'Elevator', 'Pool'] },
-      { id: 's-bw', type: 'hotel', name: 'Best Western Plus Canyonlands Inn', nightly: 239, maxGuests: 4, taxRate: 0.13, rating: 4.3, minutesToVenue: 18, amenities: ['Free breakfast', 'Downtown'] },
-      { id: 's-bighorn', type: 'hotel', name: 'Big Horn Lodge', nightly: 149, maxGuests: 4, taxRate: 0.13, rating: 4.0, minutesToVenue: 19, amenities: ['Budget-friendly', 'Pool', 'Ground-floor rooms'] },
-      { id: 's-redcliffs', type: 'hotel', name: 'Red Cliffs Lodge', nightly: 329, maxGuests: 4, taxRate: 0.13, rating: 4.5, minutesToVenue: 35, amenities: ['On the Colorado River', 'Restaurant', 'Horseback riding'] },
-      { id: 's-sorrel', type: 'hotel', name: 'Sorrel River Ranch Resort & Spa', nightly: 950, maxGuests: 2, taxRate: 0.13, rating: 4.8, minutesToVenue: 45, amenities: ['Luxury', 'Spa', 'River views'] },
-      { id: 's-canvas', type: 'hotel', name: 'Under Canvas Moab (glamping)', nightly: 309, maxGuests: 4, taxRate: 0.13, rating: 4.4, minutesToVenue: 10, amenities: ['Safari tents', 'Stargazing', 'Near Arches'] },
-      { id: 's-retreat', type: 'villa', name: '4-bedroom home with hot tub', nightly: 525, maxGuests: 8, cleaningFee: 250, taxRate: 0.13, rating: 4.8, minutesToVenue: 22, amenities: ['Hot tub', 'Full kitchen', 'Sleeps 8'] },
-      { id: 's-ranch', type: 'villa', name: '6-bedroom ranch house for big groups', nightly: 980, maxGuests: 14, cleaningFee: 350, taxRate: 0.13, rating: 4.9, minutesToVenue: 25, amenities: ['Sleeps 14', 'Big yard', 'Fire pit'] },
-      { id: 's-townhome', type: 'airbnb', name: 'Downtown 2-bedroom townhome', nightly: 245, maxGuests: 6, cleaningFee: 150, taxRate: 0.13, rating: 4.8, minutesToVenue: 17, amenities: ['Full kitchen', 'Walk to shops'] },
-      { id: 's-casita', type: 'airbnb', name: 'Cozy 1-bedroom casita, no stairs', nightly: 175, maxGuests: 2, cleaningFee: 95, taxRate: 0.13, rating: 4.9, minutesToVenue: 20, amenities: ['Single level', 'Patio', 'Quiet'] },
-      { id: 's-condo', type: 'airbnb', name: '3-bedroom condo with pool', nightly: 365, maxGuests: 8, cleaningFee: 180, taxRate: 0.13, rating: 4.7, minutesToVenue: 21, amenities: ['Shared pool', 'Full kitchen'] },
+      { id: 's-hoodoo', lat: 38.5745, lon: -109.5515, type: 'hotel', name: 'Hoodoo Moab, Curio Collection by Hilton', nightly: 349, maxGuests: 2, taxRate: 0.13, rating: 4.6, minutesToVenue: 18, amenities: ['Pool', 'Restaurant', 'Walk to downtown'] },
+      { id: 's-hyatt', lat: 38.596, lon: -109.5655, type: 'hotel', name: 'Hyatt Place Moab', nightly: 289, maxGuests: 4, taxRate: 0.13, rating: 4.5, minutesToVenue: 15, amenities: ['Free breakfast', 'Elevator', 'Pool'] },
+      { id: 's-hampton', lat: 38.58, lon: -109.5525, type: 'hotel', name: 'Hampton Inn Moab', nightly: 259, maxGuests: 4, taxRate: 0.13, rating: 4.4, minutesToVenue: 16, amenities: ['Free breakfast', 'Elevator', 'Pool'] },
+      { id: 's-bw', lat: 38.5728, lon: -109.55, type: 'hotel', name: 'Best Western Plus Canyonlands Inn', nightly: 239, maxGuests: 4, taxRate: 0.13, rating: 4.3, minutesToVenue: 18, amenities: ['Free breakfast', 'Downtown'] },
+      { id: 's-bighorn', lat: 38.565, lon: -109.547, type: 'hotel', name: 'Big Horn Lodge', nightly: 149, maxGuests: 4, taxRate: 0.13, rating: 4.0, minutesToVenue: 19, amenities: ['Budget-friendly', 'Pool', 'Ground-floor rooms'] },
+      { id: 's-redcliffs', lat: 38.73, lon: -109.413, type: 'hotel', name: 'Red Cliffs Lodge', nightly: 329, maxGuests: 4, taxRate: 0.13, rating: 4.5, minutesToVenue: 35, amenities: ['On the Colorado River', 'Restaurant', 'Horseback riding'] },
+      { id: 's-sorrel', lat: 38.713, lon: -109.385, type: 'hotel', name: 'Sorrel River Ranch Resort & Spa', nightly: 950, maxGuests: 2, taxRate: 0.13, rating: 4.8, minutesToVenue: 45, amenities: ['Luxury', 'Spa', 'River views'] },
+      { id: 's-canvas', lat: 38.665, lon: -109.64, type: 'hotel', name: 'Under Canvas Moab (glamping)', nightly: 309, maxGuests: 4, taxRate: 0.13, rating: 4.4, minutesToVenue: 10, amenities: ['Safari tents', 'Stargazing', 'Near Arches'] },
+      { id: 's-retreat', lat: 38.52, lon: -109.5, type: 'villa', name: '4-bedroom home with hot tub', nightly: 525, maxGuests: 8, cleaningFee: 250, taxRate: 0.13, rating: 4.8, minutesToVenue: 22, amenities: ['Hot tub', 'Full kitchen', 'Sleeps 8'] },
+      { id: 's-ranch', lat: 38.505, lon: -109.475, type: 'villa', name: '6-bedroom ranch house for big groups', nightly: 980, maxGuests: 14, cleaningFee: 350, taxRate: 0.13, rating: 4.9, minutesToVenue: 25, amenities: ['Sleeps 14', 'Big yard', 'Fire pit'] },
+      { id: 's-townhome', lat: 38.574, lon: -109.548, type: 'airbnb', name: 'Downtown 2-bedroom townhome', nightly: 245, maxGuests: 6, cleaningFee: 150, taxRate: 0.13, rating: 4.8, minutesToVenue: 17, amenities: ['Full kitchen', 'Walk to shops'] },
+      { id: 's-casita', lat: 38.555, lon: -109.53, type: 'airbnb', name: 'Cozy 1-bedroom casita, no stairs', nightly: 175, maxGuests: 2, cleaningFee: 95, taxRate: 0.13, rating: 4.9, minutesToVenue: 20, amenities: ['Single level', 'Patio', 'Quiet'] },
+      { id: 's-condo', lat: 38.56, lon: -109.535, type: 'airbnb', name: '3-bedroom condo with pool', nightly: 365, maxGuests: 8, cleaningFee: 180, taxRate: 0.13, rating: 4.7, minutesToVenue: 21, amenities: ['Shared pool', 'Full kitchen'] },
     ],
 
     // ---------- RENTAL CARS (prices at Salt Lake City; other airports adjusted above) ----------

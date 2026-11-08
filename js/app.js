@@ -15,7 +15,7 @@
   const AIRPORT = Object.fromEntries(W.airports.map((a) => [a.code, a]));
   // Airports so close to the venue that guests near them should just drive.
   const NOT_ORIGINS = window.AIRPORTS.filter((a) => T.miles(a, W.venue) < 150).map((a) => a.code);
-  const GROUNDS = P.expandGround(W.cars, W.transfers, W.airports);
+  const BASE_GROUNDS = P.expandGround(W.cars, W.transfers, W.airports);
   const MAX_SAVED = 3;
 
   // ---------------------------------------------------------------- state
@@ -33,6 +33,8 @@
     booked: {},
     saved: [],
     custom: { flights: [], stays: [] },
+    found: {}, // prices guests found online, by option id
+    tierEdits: {}, // swaps made inside each budget package
     textSize: 'normal',
   });
 
@@ -52,6 +54,8 @@
         filters: { ...d.filters, ...raw.filters },
         selection: { ...d.selection, ...raw.selection },
         custom: { ...d.custom, ...raw.custom },
+        found: { ...d.found, ...raw.found },
+        tierEdits: { ...d.tierEdits, ...raw.tierEdits },
       };
     } catch (e) {
       return d;
@@ -108,9 +112,17 @@
     if (drive) out.push(drive);
     out.push(...T.estimateFlights(state.home, state.origins, ARRIVALS));
     out.push(...state.custom.flights);
-    return out;
+    return out.map((o) => (o.kind === 'flight' && state.found[o.id] != null ? { ...o, price: state.found[o.id], foundOnline: true } : o));
   }
-  const allStays = () => [...W.stays, ...state.custom.stays];
+  const allStays = () =>
+    [...W.stays, ...state.custom.stays].map((x) => (state.found[x.id] != null ? { ...x, nightly: state.found[x.id], foundOnline: true } : x));
+  function grounds() {
+    return BASE_GROUNDS.map((g) => {
+      const v = state.found[g.id];
+      if (v == null) return g;
+      return g.kind === 'car' ? { ...g, daily: v, foundOnline: true } : { ...g, price: v, foundOnline: true };
+    });
+  }
   const byId = (list, id) => list.find((x) => x.id === id) || null;
 
   function selected() {
@@ -118,7 +130,7 @@
     return {
       travel: byId(travelOptions(), s.travelId),
       stay: byId(allStays(), s.stayId),
-      ground: byId(GROUNDS, s.groundId),
+      ground: byId(grounds(), s.groundId),
       activities: s.activityIds.map((id) => byId(W.activities, id)).filter(Boolean),
     };
   }
@@ -349,7 +361,7 @@
     return P.buildPackages({
       travel: travelOptions(),
       stays: allStays(),
-      grounds: GROUNDS,
+      grounds: grounds(),
       activities: state.filters.easyOnly ? W.activities.filter((a) => a.effort === 'Easy') : W.activities,
       trip: trip(),
       weddingDate: W.date,
@@ -359,11 +371,54 @@
     });
   }
 
+  /** Options that pass the guest's per-part limits ("what we found for you"). */
+  function okLists() {
+    const t = trip();
+    const caps = budget().caps;
+    return {
+      travel: travelOptions().filter((x) => P.withinCap(P.travelCost(x, t), caps.travel)),
+      stays: allStays().filter((x) => P.withinCap(P.stayCost(x, t), caps.stay)),
+      grounds: grounds().filter((x) => P.withinCap(P.groundCost(x, t), caps.ground)),
+    };
+  }
+
+  function makePackage(travel, stay, ground, planFor) {
+    const t = trip();
+    const b = budget();
+    const cost = P.costBreakdown({ travel, stay, ground }, t);
+    const leftover = b.total == null ? null : b.total - cost.total;
+    const activityPlan = leftover != null && leftover > 0 && planFor ? planFor(leftover) : [];
+    return {
+      id: `${travel.id}|${stay.id}|${ground ? ground.id : 'none'}`,
+      travel, stay, ground, cost, total: cost.total, leftover,
+      doorMinutes: P.doorToDoor(travel, AIRPORT),
+      stops: travel.kind === 'drive' ? 0 : travel.stops,
+      activityPlan,
+    };
+  }
+
+  /** The four budget packages, with any swaps the guest made applied. */
+  function currentTiers(res) {
+    const t = trip();
+    const lists = okLists();
+    const acts = state.filters.easyOnly ? W.activities.filter((a) => a.effort === 'Easy') : W.activities;
+    const planFor = P.activityPlanner(acts, t, P.freeHours(t, W.date));
+    return P.budgetTiers(res.fits, budget().total).map((tier) => {
+      const e = state.tierEdits[tier.key];
+      if (!e) return { ...tier, edited: false };
+      const travel = byId(lists.travel, e.travelId) || tier.pkg.travel;
+      const stay = byId(lists.stays, e.stayId) || tier.pkg.stay;
+      let ground = e.groundId === 'none' ? null : byId(lists.grounds, e.groundId) || tier.pkg.ground;
+      ground = P.matchGround(travel, ground, lists.grounds, W.airports);
+      return { ...tier, edited: true, pkg: makePackage(travel, stay, ground, planFor) };
+    });
+  }
+
   function renderOptions() {
     const el = $('#options');
     const t = trip();
     if (!travelOptions().length) {
-      el.innerHTML = `<div class="empty">Start with <a href="#step-home">step 1</a> — tell us where you’re traveling from and your options will appear here.</div>`;
+      el.innerHTML = `<div class="empty">Start with <a href="#step-home">step 1</a> — tell us where you’re traveling from and your packages will appear here.</div>${compareTable()}`;
       return;
     }
     if (!P.nights(t.arrive, t.depart)) {
@@ -381,14 +436,13 @@
         ${capNote}
         <p>Things that can help:</p>
         <ul class="tips"><li>Stay fewer nights</li><li>Fly with a stop or two (often cheaper)</li><li>Share a vacation home or car with other guests (step 2)</li><li>Raise or remove a limit in step 3</li></ul>
-        ${closest.length ? `<h3 class="sub-h">The closest options</h3>${closest.map((p) => tripCard(p)).join('')}` : ''}`;
+        ${closest.length ? `<h3 class="sub-h">The closest options</h3>${closest.map((p) => tripCard(p)).join('')}` : ''}${compareTable()}`;
       return;
     }
 
-    const picks = P.recommendations(res.fits);
-    const summary = b.total == null
-      ? `<p class="lead">Here are our three suggestions for ${plural(t.travelers, 'person', 'people')}, ${plural(P.nights(t.arrive, t.depart), 'night')}.</p>`
-      : `<p class="lead"><b>${res.fits.length}</b> different trips fit your <b>${fmt(b.total)}</b> budget. Here are our three suggestions:</p>`;
+    const tiers = currentTiers(res);
+    const intro = `<p class="lead">${b.total == null ? 'Four packages, from the lowest price up.' : `Four packages at different price levels, all within your <b>${fmt(b.total)}</b> budget.`}
+      Don’t like a part? Use <b>Change</b> to swap it for another option we found. Found a better price online? Enter it and the total updates.</p>`;
 
     const all = state.showAll
       ? `<div class="all-head">
@@ -403,7 +457,8 @@
         <button type="button" class="btn btn-quiet" data-action="toggle-all">Hide the full list</button>`
       : `<button type="button" class="btn btn-wide" data-action="toggle-all">See all ${res.fits.length} trips${b.total == null ? '' : ' that fit my budget'}</button>`;
 
-    el.innerHTML = `${summary}${capNote}<div class="picks">${picks.map((r) => tripCard(r.pkg, r)).join('')}</div>${all}`;
+    el.innerHTML = `${intro}${capNote}<div class="picks">${tiers.map((tier) => tripCard(tier.pkg, tier)).join('')}</div>${all}${compareTable()}`;
+    drawMaps(el);
   }
 
   function capRemovalNote(removed) {
@@ -415,42 +470,237 @@
     return bits.length ? `<p class="muted">Your limits are hiding ${bits.join(', ')}.</p>` : '';
   }
 
-  function tripCard(p, rec) {
+  // ---- labels and links used by package rows and the summary
+  function travelShort(o) {
+    if (o.kind === 'drive') return 'Drive your own car';
+    const stops = o.stops === 0 ? 'Direct' : P.stopsLabel(o.stops);
+    return `${stops}: ${o.from} to ${cityOf(o.to)}`;
+  }
+  function travelLinks(o, t) {
+    if (o.kind === 'drive') return L.drive(state.home, W.venue);
+    if (o.url && safeUrl(o.url)) return [{ label: 'Book this flight', url: o.url }];
+    return L.flight({ from: o.from, to: o.to, arrive: t.arrive, depart: t.depart, travelers: t.travelers, stops: o.stops });
+  }
+  const stayLinks = (x, t) => L.stay(x, { place: W.venue.searchName, arrive: t.arrive, depart: t.depart, travelers: t.groupSize });
+  const groundLinks = (g, t) => (g.kind === 'car' ? L.car({ airport: g.airport, arrive: t.arrive, depart: t.depart }) : L.transfer(g, W.venue));
+
+  /** What a typed-in "price I found" means for each kind of option. */
+  function priceUnit(slot, item) {
+    if (slot === 'travel') return { label: 'Round-trip price per person', base: item.price };
+    if (slot === 'stay') return { label: 'Price per night (before tax)', base: item.nightly };
+    if (item.kind === 'car') return { label: 'Price per day', base: item.daily };
+    return { label: item.pricing === 'perPerson' ? 'Price per person' : 'Price for the ride', base: item.price };
+  }
+
+  function priceTag(item) {
+    if (!item) return '';
+    if (item.foundOnline) return '<span class="price-tag found">Price you found</span>';
+    if (item.kind === 'drive') return '<span class="price-tag">Fuel estimate</span>';
+    return '<span class="price-tag">Estimate</span>';
+  }
+
+  /** "Check live price" + "Found a different price?" for one item. */
+  function liveControls(slot, item, links) {
+    if (!item || item.kind === 'drive') return '';
+    const u = priceUnit(slot, item);
+    return `
+      <div class="live-row">
+        ${linkButtons(links.slice(0, 1).map((l) => ({ ...l, label: 'Check live price' })), 'btn-small')}
+        <details class="found">
+          <summary>Found a different price online?</summary>
+          <form class="found-form" data-found="${esc(item.id)}">
+            <label class="field"><span>${u.label}</span>
+              <span class="money"><span aria-hidden="true">$</span><input type="number" inputmode="decimal" name="price" min="0" step="1" value="${item.foundOnline ? esc(u.base) : ''}" placeholder="${esc(u.base)}" /></span></label>
+            <div class="btn-row tight"><button type="submit" class="btn btn-small btn-primary">Use this price</button>
+            ${item.foundOnline ? `<button type="button" class="btn btn-small btn-quiet" data-action="clear-found" data-id="${esc(item.id)}">Go back to our estimate</button>` : ''}</div>
+          </form>
+        </details>
+      </div>`;
+  }
+
+  /** A drop-down to swap one part of a package for another option we found. */
+  function swapSelect(tier, slot, p) {
+    const t = trip();
+    const b = budget();
+    const lists = okLists();
+    let options;
+    let current;
+    if (slot === 'travel') {
+      options = lists.travel.map((o) => ({ id: o.id, label: travelShort(o), cost: P.travelCost(o, t) }));
+      current = p.travel.id;
+    } else if (slot === 'stay') {
+      options = lists.stays.map((o) => ({ id: o.id, label: o.name, cost: P.stayCost(o, t) }));
+      current = p.stay.id;
+    } else {
+      if (p.travel.kind === 'drive') return '';
+      const here = lists.grounds.filter((g) => g.airport === p.travel.to);
+      options = here.map((o) => ({ id: o.id, label: o.kind === 'car' ? o.name : o.name, cost: P.groundCost(o, t) }));
+      if (AIRPORT[p.travel.to] && AIRPORT[p.travel.to].noCarOk) options.unshift({ id: 'none', label: 'No car', cost: 0 });
+      current = p.ground ? p.ground.id : 'none';
+    }
+    if (options.length < 2) return '';
+    const curCost = options.find((o) => o.id === current)?.cost ?? 0;
+    options.sort((a, c) => a.cost - c.cost);
+    const opts = options
+      .map((o) => {
+        const diff = o.cost - curCost;
+        const over = b.total != null && p.total + diff > b.total;
+        const note = o.id === current ? '' : ` (${diff >= 0 ? '+' : '−'}${fmt(Math.abs(diff))}${over ? ', over budget' : ''})`;
+        return `<option value="${esc(o.id)}" ${o.id === current ? 'selected' : ''}>${o.id === current ? '✓ ' : ''}${esc(o.label)}, ${fmt(o.cost)}${note}</option>`;
+      })
+      .join('');
+    const name = { travel: 'how you get there', stay: 'where you stay', ground: 'your car or shuttle' }[slot];
+    return `<label class="swap"><span>Change ${name}</span><select data-action="swap" data-tier="${tier.key}" data-slot="${slot}">${opts}</select></label>`;
+  }
+
+  // ---------------------------------------------------------------- maps
+  const mapRoutes = {}; // map element id -> route
+  const openMaps = new Set(); // package maps the guest has opened
+
+  /** The journey for a package: points and legs for the map, plus plain-language steps. */
+  function routeFor(p) {
+    const points = [];
+    const legs = [];
+    const steps = [];
+    const add = (pt) => (points.push(pt), points.length - 1);
+    const tr = p.travel;
+    const stay = p.stay;
+    const venue = W.venue;
+    const stayHas = stay && stay.lat != null;
+    let last = null;
+    if (state.home) last = add({ lat: state.home.lat, lon: state.home.lon, label: 'Home', kind: 'home' });
+
+    if (tr.kind === 'drive') {
+      const to = stayHas ? add({ lat: stay.lat, lon: stay.lon, label: stay.name, kind: 'stay' }) : null;
+      if (last != null && to != null) legs.push({ from: last, to, mode: 'drive' });
+      steps.push(`Drive from home to ${stay ? stay.name : W.venue.city}: ${tr.miles.toLocaleString()} miles, ${hoursText(tr.durationMinutes)}${tr.overnight ? '. Plan an overnight stop on the way' : ''}.`);
+      last = to != null ? to : last;
+    } else {
+      const from = T.byCode[tr.from];
+      const arrival = T.byCode[tr.to];
+      const arrivalInfo = AIRPORT[tr.to];
+      let at = null;
+      if (from) {
+        at = add({ lat: from.lat, lon: from.lon, label: `${cityOf(tr.from)} airport (${tr.from})`, kind: 'airport' });
+        if (last != null) legs.push({ from: last, to: at, mode: 'drive' });
+        if (state.home && tr.homeMinutes) steps.push(`Get to ${airportLabel(tr.from)} airport — ${hoursText(tr.homeMinutes)} from home. Arrive about 1½ hours before your flight.`);
+      }
+      (tr.via || []).forEach((code) => {
+        const v = T.byCode[code];
+        if (!v) return;
+        const i = add({ lat: v.lat, lon: v.lon, label: `Change planes in ${cityOf(code)} (${code})`, kind: 'connection' });
+        if (at != null) legs.push({ from: at, to: i, mode: 'fly' });
+        at = i;
+      });
+      if (arrival) {
+        const i = add({ lat: arrival.lat, lon: arrival.lon, label: `Land in ${cityOf(tr.to)} (${tr.to})`, kind: 'airport', local: arrivalInfo && arrivalInfo.minutesToVenue <= 30 });
+        if (at != null) legs.push({ from: at, to: i, mode: 'fly' });
+        at = i;
+      }
+      const via = (tr.via || []).length ? `, changing planes in ${tr.via.map(cityOf).join(' and ')}` : ', direct';
+      steps.push(`Fly from ${airportLabel(tr.from)} to ${airportLabel(tr.to)}${via} — ${hoursText(tr.durationMinutes)} of travel.`);
+      const drive = arrivalInfo ? hoursText(arrivalInfo.minutesToVenue) : '';
+      const where = stay ? stay.name : W.venue.city;
+      if (p.ground && p.ground.kind === 'car') steps.push(`Pick up your rental car (${p.ground.name}) at the airport and drive to ${where} — ${drive}.`);
+      else if (p.ground) steps.push(`Take the ${p.ground.name} to ${where} — ${drive}.`);
+      else steps.push(`Take a taxi or ride to ${where} — ${drive}.`);
+      if (stayHas) {
+        const i = add({ lat: stay.lat, lon: stay.lon, label: stay.name, kind: 'stay' });
+        if (at != null) legs.push({ from: at, to: i, mode: 'drive' });
+        at = i;
+      }
+      last = at;
+    }
+    const v = add({ lat: venue.lat, lon: venue.lon, label: venue.name, kind: 'venue' });
+    if (last != null) legs.push({ from: last, to: v, mode: 'drive' });
+    if (stay) steps.push(`On the wedding day: ${stay.name} to ${venue.name}${stay.minutesToVenue != null ? ` — about ${stay.minutesToVenue} minutes` : ''}.`);
+
+    const start = tr.kind === 'drive' ? (state.home ? `${state.home.lat},${state.home.lon}` : '') : `${tr.to} airport`;
+    const directions = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(start)}&destination=${encodeURIComponent(venue.address)}${stay ? `&waypoints=${encodeURIComponent(stayHas ? `${stay.lat},${stay.lon}` : `${stay.name}, ${venue.city}`)}` : ''}&travelmode=driving`;
+    return { points, legs, steps, directions };
+  }
+
+  function mapBlock(id, p) {
+    const r = routeFor(p);
+    mapRoutes[id] = r;
+    return `
+      <div class="trip-map-wrap">
+        <div class="trip-map" id="${id}" role="img" aria-label="Map of the journey from ${esc(state.home ? 'home' : airportLabel(p.travel.from || ''))} to ${esc(W.venue.name)}"></div>
+        <div class="map-btns">
+          <button type="button" class="btn btn-small" data-action="map-all" data-map="${id}">Whole journey</button>
+          <button type="button" class="btn btn-small" data-action="map-local" data-map="${id}">Zoom to Moab</button>
+          <span class="map-key"><span class="k fly"></span>Flight <span class="k drive"></span>Drive</span>
+        </div>
+        <ol class="route-steps">${r.steps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>
+        <a class="btn btn-small" href="${esc(r.directions)}" target="_blank" rel="noopener">Driving directions in Google Maps<span class="ext" aria-hidden="true"> ↗</span></a>
+      </div>`;
+  }
+
+  /** Draw any maps that are on screen (after a re-render). */
+  function drawMaps(scope = document) {
+    scope.querySelectorAll('.trip-map').forEach((el) => {
+      const details = el.closest('details');
+      if (details && !details.open) return;
+      if (mapRoutes[el.id]) window.TripMap.render(el, mapRoutes[el.id]);
+    });
+  }
+
+  function tripCard(p, tier) {
     const t = trip();
     const n = P.nights(t.arrive, t.depart);
+    const b = budget();
     const tr = p.travel;
     const arrival = tr.kind === 'flight' ? AIRPORT[tr.to] : null;
+    const editable = tier && tier.key;
     const extras = p.leftover == null
       ? ''
-      : p.activityPlan.length
-        ? `<p class="tc-extra">You’d have <b>${fmt(p.leftover)}</b> left. That’s enough for: ${p.activityPlan.map((a) => esc(a.name)).join(', ')}.</p>`
-        : `<p class="tc-extra plain">You’d have <b>${fmt(p.leftover)}</b> left for meals and extras.</p>`;
+      : p.leftover < 0
+        ? `<p class="tc-extra over">This is <b>${fmt(-p.leftover)}</b> over your budget.</p>`
+        : p.activityPlan.length
+          ? `<p class="tc-extra">You’d have <b>${fmt(p.leftover)}</b> left. That’s enough for: ${p.activityPlan.map((a) => esc(a.name)).join(', ')}.</p>`
+          : `<p class="tc-extra plain">You’d have <b>${fmt(p.leftover)}</b> left for meals and extras.</p>`;
     const isChosen = state.selection.travelId === tr.id && state.selection.stayId === p.stay.id && (state.selection.groundId || 'none') === (p.ground ? p.ground.id : 'none');
+    const level = tier && tier.key ? ['saver', 'value', 'comfort', 'splurge'].indexOf(tier.key) + 1 : 0;
     return `
-      <article class="trip-card ${rec ? 'is-pick' : ''} ${isChosen ? 'is-chosen' : ''}">
+      <article class="trip-card ${tier ? 'is-pick' : ''} ${isChosen ? 'is-chosen' : ''}">
         <header class="tc-head">
           <div>
-            ${rec ? `<p class="tc-label">${esc(rec.label)}</p><p class="tc-why">${esc(rec.why)}</p>` : ''}
+            ${tier ? `<p class="tc-level">${level ? `${'$'.repeat(level)}<span class="sr-only">Level ${level} of 4</span>` : ''}</p><p class="tc-label">${esc(tier.label)}</p><p class="tc-why">${esc(tier.why)}</p>` : ''}
           </div>
-          <div class="tc-total"><span>${fmt(p.total)}</span><small>total for ${plural(t.travelers, 'person', 'people')}, ${plural(n, 'night')}</small></div>
+          <div class="tc-total"><span>${fmt(p.total)}</span><small>total for ${plural(t.travelers, 'person', 'people')}, ${plural(n, 'night')}${b.total != null ? `<br/>${Math.round((p.total / b.total) * 100)}% of your budget` : ''}</small></div>
         </header>
-        <dl class="tc-parts">
-          <div><dt>Getting there</dt><dd><b>${esc(travelTitle(tr))}</b><br/>${esc(travelLine(tr))}${tr.kind === 'flight' ? ` · ${hoursText(tr.durationMinutes)} of flying` : ''}</dd><dd class="amt">${fmt(p.cost.travel)}</dd></div>
-          <div><dt>Staying at</dt><dd><b>${esc(p.stay.name)}</b><br/>${STAY_TYPES[p.stay.type]}${p.stay.rating ? ` · rated ${p.stay.rating} of 5` : ''}${p.stay.minutesToVenue != null ? ` · ${p.stay.minutesToVenue} min to the venue` : ''}</dd><dd class="amt">${fmt(p.cost.stay)}</dd></div>
-          <div><dt>Getting around</dt><dd>${p.ground ? `<b>${esc(groundTitle(p.ground))}</b>${arrival ? `<br/>Then ${hoursText(arrival.minutesToVenue)} to the venue` : ''}` : tr.kind === 'drive' ? 'Your own car' : 'No car — you’ll need taxis or rides'}</dd><dd class="amt">${fmt(p.cost.ground)}</dd></div>
-        </dl>
+        <div class="tc-parts">
+          <section class="tc-part">
+            <div class="tc-row"><h4>Getting there</h4><p class="amt">${fmt(p.cost.travel)}${priceTag(tr)}</p></div>
+            <p><b>${esc(travelTitle(tr))}</b><br/>${esc(travelLine(tr))}${tr.kind === 'flight' ? ` · ${hoursText(tr.durationMinutes)} of travel` : ''}</p>
+            ${editable ? swapSelect(tier, 'travel', p) + liveControls('travel', tr, travelLinks(tr, t)) : ''}
+          </section>
+          <section class="tc-part">
+            <div class="tc-row"><h4>Staying at</h4><p class="amt">${fmt(p.cost.stay)}${priceTag(p.stay)}</p></div>
+            <p><b>${esc(p.stay.name)}</b><br/>${STAY_TYPES[p.stay.type]}${p.stay.rating ? ` · rated ${p.stay.rating} of 5` : ''}${p.stay.minutesToVenue != null ? ` · ${p.stay.minutesToVenue} min to the venue` : ''}</p>
+            ${editable ? swapSelect(tier, 'stay', p) + liveControls('stay', p.stay, stayLinks(p.stay, t)) : ''}
+          </section>
+          <section class="tc-part">
+            <div class="tc-row"><h4>Getting around</h4><p class="amt">${fmt(p.cost.ground)}${p.ground ? priceTag(p.ground) : ''}</p></div>
+            <p>${p.ground ? `<b>${esc(groundTitle(p.ground))}</b>${arrival ? `<br/>Then ${hoursText(arrival.minutesToVenue)} to the venue` : ''}` : tr.kind === 'drive' ? 'Your own car' : 'No car — you’ll need taxis or rides'}</p>
+            ${editable ? swapSelect(tier, 'ground', p) + (p.ground ? liveControls('ground', p.ground, groundLinks(p.ground, t)) : '') : ''}
+          </section>
+        </div>
         <p class="tc-door">Door to venue: ${hoursText(p.doorMinutes)} each way</p>
         ${extras}
+        ${tier && tier.key ? `<details class="more map-details" data-map-key="${tier.key}" ${openMaps.has(tier.key) ? 'open' : ''}>
+          <summary>Show this trip on a map</summary>${mapBlock(`map-${tier.key}`, p)}</details>` : ''}
         <div class="tc-actions">
-          <button type="button" class="btn btn-primary" data-action="use-package" data-id="${esc(p.id)}">${isChosen ? 'Chosen ✓ — see booking steps' : 'Book this trip'}</button>
-          <button type="button" class="btn btn-quiet" data-action="save-package" data-id="${esc(p.id)}">Save to compare later</button>
+          <button type="button" class="btn btn-primary" data-action="use-package" data-id="${esc(p.id)}">${isChosen ? 'Chosen ✓ — see your summary' : 'Choose this package'}</button>
+          <button type="button" class="btn btn-quiet" data-action="save-package" data-id="${esc(p.id)}">Save to compare</button>
+          ${tier && tier.edited ? `<button type="button" class="btn btn-quiet" data-action="reset-tier" data-tier="${tier.key}">Undo my changes</button>` : ''}
         </div>
       </article>`;
   }
 
   function findPackage(id) {
     const [tid, sid, gid] = id.split('|');
-    return { travel: byId(travelOptions(), tid), stay: byId(allStays(), sid), ground: gid === 'none' ? null : byId(GROUNDS, gid) };
+    return { travel: byId(travelOptions(), tid), stay: byId(allStays(), sid), ground: gid === 'none' ? null : byId(grounds(), gid) };
   }
 
   // ---------------------------------------------------------------- step 5: browse
@@ -603,7 +853,7 @@
     if (sel.travel && sel.travel.kind === 'drive')
       return `<div class="notice good big">You’re driving your own car, so you don’t need a rental.</div>`;
     const airport = f.groundAirport || (sel.travel ? sel.travel.to : 'SLC');
-    const list = GROUNDS.filter((g) => g.airport === airport).sort((a, b) => P.groundCost(a, t) - P.groundCost(b, t));
+    const list = grounds().filter((g) => g.airport === airport).sort((a, b) => P.groundCost(a, t) - P.groundCost(b, t));
     return `
       <div class="filters">
         <p class="label">Pick up at</p>
@@ -682,7 +932,7 @@
       </article>`;
   }
 
-  // ---------------------------------------------------------------- step 6: my trip
+  // ---------------------------------------------------------------- step 6: summary
   function renderMyTrip() {
     const el = $('#mytrip');
     const t = trip();
@@ -692,80 +942,88 @@
     const any = sel.travel || sel.stay || sel.ground || sel.activities.length;
 
     if (!any) {
-      el.innerHTML = `<div class="empty">Pick a trip in step 4, or add parts in step 5. Your booking buttons will appear here, one step at a time.</div>${compareTable()}`;
+      el.innerHTML = `<div class="empty">Nothing chosen yet. Choose a package in <a href="#step-options">step 4</a>, or add parts in <a href="#step-browse">step 5</a>. Everything you choose will be listed here with a button to book it.</div>`;
       return;
     }
 
-    const row = (label, val, cap) => {
-      const over = cap != null && val > cap;
-      return `<tr><th scope="row">${label}</th><td>${fmt(val)}${cap != null ? ` <span class="${over ? 'fit bad' : 'muted'}">(limit ${fmt(cap)})</span>` : ''}</td></tr>`;
-    };
+    const n = P.nights(t.arrive, t.depart);
+    const items = [];
+    if (sel.travel)
+      items.push(summaryItem('travel', sel.travel.kind === 'drive' ? 'Getting there' : 'Flights', travelTitle(sel.travel),
+        sel.travel.kind === 'drive'
+          ? `${travelLine(sel.travel)}.`
+          : `${travelLine(sel.travel)}. Leave ${niceDate(t.arrive, true)}, return ${niceDate(t.depart, true)}. ${plural(t.travelers, 'passenger')}.`,
+        c.travel, b.caps.travel, sel.travel, travelLinks(sel.travel, t), '#step-browse', 'travel'));
+    if (sel.stay)
+      items.push(summaryItem('stay', 'Place to stay', sel.stay.name,
+        `${STAY_TYPES[sel.stay.type]}. Check in ${niceDate(t.arrive, true)}, check out ${niceDate(t.depart, true)} (${plural(n, 'night')}).${sel.stay.perk ? ` ${sel.stay.perk}` : ''}`,
+        c.stay, b.caps.stay, sel.stay, stayLinks(sel.stay, t), '#step-browse', 'stays'));
+    if (sel.ground)
+      items.push(summaryItem('ground', sel.ground.kind === 'car' ? 'Rental car' : 'Ride', groundTitle(sel.ground),
+        sel.ground.kind === 'car' ? `Pick up ${niceDate(t.arrive, true)}, return ${niceDate(t.depart, true)}. ${sel.ground.example || ''}` : sel.ground.note || '',
+        c.ground, b.caps.ground, sel.ground, groundLinks(sel.ground, t), '#step-browse', 'ground'));
+    else if (sel.travel && sel.travel.kind === 'flight')
+      items.push(`<li class="sum-item missing"><div class="sum-head"><div><p class="sum-kind">Car or shuttle</p><h4>Not chosen yet</h4></div></div>
+        <p>You’ll need a way to get from ${esc(airportLabel(sel.travel.to))} to Moab.</p>
+        <div class="btn-row"><button type="button" class="btn btn-primary" data-action="goto-tab" data-tab-target="ground">Choose a car or shuttle</button></div></li>`);
+    sel.activities.forEach((a) =>
+      items.push(summaryItem(`act-${a.id}`, 'Thing to do', a.name, `${a.effort} · ${a.durationHours} hours${a.note ? `. ${a.note}` : ''}`,
+        P.activityCost(a, t), null, a, safeUrl(a.url) ? [{ label: 'More info & tickets', url: a.url }] : L.activitySearch(W.venue.searchName), '#step-browse', 'activities')));
+
     const left = b.total == null ? null : b.total - c.total;
 
-    const steps = [];
-    if (sel.travel) {
-      steps.push(bookStep('travel', sel.travel.kind === 'drive' ? 'Plan your drive' : 'Book your flights',
-        sel.travel.kind === 'drive'
-          ? `${esc(travelLine(sel.travel))}.`
-          : `<b>${esc(travelTitle(sel.travel))}</b>: ${esc(travelLine(sel.travel))}. Leave ${niceDate(t.arrive, true)}, come home ${niceDate(t.depart, true)}, ${plural(t.travelers, 'passenger')}.`,
-        sel.travel.kind === 'drive'
-          ? L.drive(state.home, W.venue)
-          : sel.travel.url && safeUrl(sel.travel.url) ? [{ label: 'Book', url: sel.travel.url }] : L.flight({ from: sel.travel.from, to: sel.travel.to, arrive: t.arrive, depart: t.depart, travelers: t.travelers, stops: sel.travel.stops })));
-    }
-    if (sel.stay)
-      steps.push(bookStep('stay', 'Book your place to stay', `<b>${esc(sel.stay.name)}</b>, ${niceDate(t.arrive, true)} to ${niceDate(t.depart, true)}.${sel.stay.perk ? ` ${esc(sel.stay.perk)}` : ''}`,
-        L.stay(sel.stay, { place: W.venue.searchName, arrive: t.arrive, depart: t.depart, travelers: t.groupSize })));
-    if (sel.ground)
-      steps.push(bookStep('ground', sel.ground.kind === 'car' ? 'Reserve your car' : 'Book your ride', `<b>${esc(groundTitle(sel.ground))}</b>${sel.ground.kind === 'car' ? `, pick up ${niceDate(t.arrive, true)} and return ${niceDate(t.depart, true)}` : ''}.`,
-        sel.ground.kind === 'car' ? L.car({ airport: sel.ground.airport, arrive: t.arrive, depart: t.depart }) : L.transfer(sel.ground, W.venue)));
-    if (sel.activities.length)
-      steps.push(bookStep('activities', 'Book things to do', sel.activities.map((a) => esc(a.name)).join(', ') + '.',
-        [...sel.activities.filter((a) => safeUrl(a.url)).map((a) => ({ label: a.name, url: a.url })), ...L.activitySearch(W.venue.searchName)]));
-
     el.innerHTML = `
-      <div class="mytrip">
-        <div>
-          <h3 class="sub-h">Your plan</h3>
-          <ul class="schedule">
-            <li><span class="when">${niceDate(t.arrive, true)}</span><span>${sel.travel ? `Travel: ${esc(travelTitle(sel.travel))}${sel.travel.kind === 'flight' ? ` from ${esc(airportLabel(sel.travel.from))} to ${esc(airportLabel(sel.travel.to))}` : ''}` : '<span class="muted">Getting there not chosen yet</span>'}</span></li>
-            ${sel.ground ? `<li><span class="when">${niceDate(t.arrive, true)}</span><span>Pick up: ${esc(groundTitle(sel.ground))}</span></li>` : ''}
-            <li><span class="when">${plural(P.nights(t.arrive, t.depart), 'night')}</span><span>${sel.stay ? `Stay at ${esc(sel.stay.name)}` : '<span class="muted">Place to stay not chosen yet</span>'}</span></li>
-            ${W.events.filter((e) => P.stayDates(t.arrive, t.depart).includes(e.date)).map((e) => `<li><span class="when">${niceDate(e.date, true)}</span><span><b>${esc(e.name)}</b>, ${esc(e.time)}</span></li>`).join('')}
-            ${sel.activities.map((a) => `<li><span class="when">Any free day</span><span>${esc(a.name)}</span></li>`).join('')}
-            <li><span class="when">${niceDate(t.depart, true)}</span><span>Head home</span></li>
-          </ul>
-        </div>
-        <div>
-          <h3 class="sub-h">What it costs</h3>
-          <table class="costs">
-            ${row('Getting there', c.travel, b.caps.travel)}
-            ${row('Place to stay', c.stay, b.caps.stay)}
-            ${row('Car or shuttle', c.ground, b.caps.ground)}
-            ${row('Things to do', c.activities, null)}
-            <tr class="total"><th scope="row">Total</th><td>${fmt(c.total)}</td></tr>
-            ${left == null ? '' : `<tr><th scope="row">Your budget</th><td>${fmt(b.total)} — <span class="fit ${left >= 0 ? 'good' : 'bad'}">${left >= 0 ? `${fmt(left)} left` : `${fmt(-left)} over`}</span></td></tr>`}
-          </table>
-        </div>
-      </div>
-      <h3 class="sub-h">How to book, step by step</h3>
-      <p class="muted">Each button opens the booking website with your dates and number of people filled in. Tick each step when it’s done.</p>
-      <ol class="book-steps">${steps.join('')}</ol>
-      <div class="btn-row">
-        <button type="button" class="btn" data-action="print">Print my plan</button>
-        <button type="button" class="btn" data-action="copy">Copy my plan to send to the couple</button>
+      <p class="lead">Here’s everything you chose for ${niceDate(t.arrive, true)} to ${niceDate(t.depart, true)}, ${plural(t.travelers, 'person', 'people')}. Book each item with its button, then tick it off.</p>
+      <ol class="sum-list">${items.join('')}</ol>
+      ${sel.travel && sel.stay ? `<h3 class="sub-h">Your route</h3>${mapBlock('map-summary', { travel: sel.travel, stay: sel.stay, ground: sel.ground })}` : ''}
 
-        <button type="button" class="btn btn-quiet" data-action="clear">Start over</button>
+      <div class="sum-total">
+        <table class="costs">
+          ${costRow('Getting there', c.travel, b.caps.travel, !!sel.travel)}
+          ${costRow('Place to stay', c.stay, b.caps.stay, !!sel.stay)}
+          ${costRow('Car or shuttle', c.ground, b.caps.ground, !!sel.ground)}
+          ${costRow('Things to do', c.activities, null, sel.activities.length > 0)}
+          <tr class="total"><th scope="row">Total</th><td>${fmt(c.total)}</td></tr>
+          ${left == null ? '' : `<tr><th scope="row">Your budget</th><td>${fmt(b.total)} — <span class="fit ${left >= 0 ? 'good' : 'bad'}">${left >= 0 ? `${fmt(left)} left` : `${fmt(-left)} over`}</span></td></tr>`}
+        </table>
+        <p class="muted">Prices marked “Estimate” are our best guess. The booking site always shows the real price before you pay.</p>
       </div>
-      ${compareTable()}`;
+
+      <details class="more">
+        <summary>See it day by day</summary>
+        <ul class="schedule">
+          <li><span class="when">${niceDate(t.arrive, true)}</span><span>${sel.travel ? esc(travelTitle(sel.travel)) : 'Arrive'}${sel.ground ? `, then ${esc(groundTitle(sel.ground))}` : ''}${sel.stay ? `. Check in at ${esc(sel.stay.name)}` : ''}</span></li>
+          ${W.events.filter((e) => P.stayDates(t.arrive, t.depart).includes(e.date)).map((e) => `<li><span class="when">${niceDate(e.date, true)}</span><span><b>${esc(e.name)}</b>, ${esc(e.time)}${e.everyone === false ? ' (wedding party &amp; family)' : ''}</span></li>`).join('')}
+          ${sel.activities.map((a) => `<li><span class="when">Any free day</span><span>${esc(a.name)}</span></li>`).join('')}
+          <li><span class="when">${niceDate(t.depart, true)}</span><span>Head home</span></li>
+        </ul>
+      </details>
+
+      <div class="btn-row">
+        <button type="button" class="btn" data-action="print">Print my summary</button>
+        <button type="button" class="btn" data-action="copy">Copy my summary to send to the couple</button>
+        <button type="button" class="btn btn-quiet" data-action="clear">Start over</button>
+      </div>`;
+    drawMaps(el);
   }
 
-  function bookStep(key, title, text, links) {
+  function costRow(label, val, cap, chosen) {
+    const over = cap != null && val > cap;
+    return `<tr><th scope="row">${label}</th><td>${chosen ? fmt(val) : '<span class="muted">not chosen</span>'}${cap != null ? ` <span class="${over ? 'fit bad' : 'muted'}">(limit ${fmt(cap)})</span>` : ''}</td></tr>`;
+  }
+
+  function summaryItem(key, kind, title, text, cost, cap, item, links, changeHref, tab) {
     const done = !!state.booked[key];
-    return `<li class="book-step ${done ? 'done' : ''}">
-      <h4>${title}</h4>
-      <p>${text}</p>
-      <div class="btn-row">${linkButtons(links.slice(0, 1), 'btn-book btn-primary')}${linkButtons(links.slice(1), 'btn-book')}</div>
-      <label class="check"><input type="checkbox" data-action="booked" data-key="${key}" ${done ? 'checked' : ''}/> I’ve booked this</label>
+    const over = cap != null && cost > cap;
+    return `<li class="sum-item ${done ? 'done' : ''}">
+      <div class="sum-head">
+        <div><p class="sum-kind">${esc(kind)}</p><h4>${esc(title)}</h4></div>
+        <p class="amt">${fmt(cost)}${priceTag(item)}${over ? '<span class="fit bad">Over your limit</span>' : ''}</p>
+      </div>
+      <p>${esc(text)}</p>
+      <div class="btn-row">${linkButtons(links.slice(0, 1).map((l) => ({ ...l, label: /^(Book|More|Driving)/.test(l.label) ? l.label : `Book on ${l.label}` })), 'btn-primary')}${linkButtons(links.slice(1))}
+        <button type="button" class="btn btn-quiet" data-action="goto-tab" data-tab-target="${tab}">Change</button></div>
+      <label class="check"><input type="checkbox" data-action="booked" data-key="${esc(key)}" ${done ? 'checked' : ''}/> I’ve booked this</label>
     </li>`;
   }
 
@@ -777,7 +1035,7 @@
     const cell = (x, html, cls = '') => `<td class="${cls}">${html}</td>`;
     const row = (label, fn) => `<tr><th scope="row">${label}</th>${trips.map(fn).join('')}</tr>`;
     return `
-      <details class="more" id="compare"><summary>Compare your ${plural(trips.length, 'saved trip')}</summary>
+      <details class="more" id="compare" open><summary>Compare your ${plural(trips.length, 'saved trip')}</summary>
       <div class="table-wrap"><table class="compare">
         <thead><tr><th></th>${trips.map((x) => `<th scope="col">${esc(x.name)}<div class="btn-row tight">
           <button type="button" class="btn btn-small" data-action="load-saved" data-id="${x.id}">Choose</button>
@@ -801,7 +1059,7 @@
   function saveTrip(sel) {
     if (state.saved.length >= MAX_SAVED) {
       toast(`You can compare up to ${MAX_SAVED} trips. Remove one first.`);
-      $('#step-mytrip').scrollIntoView({ behavior: 'smooth' });
+      $('#compare') && $('#compare').scrollIntoView({ behavior: 'smooth' });
       return;
     }
     const t = trip();
@@ -815,7 +1073,7 @@
     });
     save();
     renderAll();
-    toast('Saved. Compare it at the bottom of step 6.');
+    toast('Saved. Compare it at the bottom of step 4.');
   }
 
   function planText() {
@@ -993,7 +1251,7 @@
           const tr = byId(travelOptions(), s.travelId);
           // Keep the car at the airport you're flying into.
           if (s.groundId) {
-            const g = byId(GROUNDS, s.groundId);
+            const g = byId(grounds(), s.groundId);
             if (!tr || tr.kind === 'drive' || (g && g.airport !== tr.to)) s.groundId = null;
           }
           f.groundAirport = tr && tr.kind === 'flight' ? tr.to : '';
@@ -1040,6 +1298,26 @@
         toast(`${rec.name} chosen.`);
         break;
       }
+      case 'map-all':
+      case 'map-local': {
+        const m = document.getElementById(btn.dataset.map);
+        if (m && m._showAll) (action === 'map-all' ? m._showAll : m._showLocal)();
+        return;
+      }
+      case 'reset-tier':
+        delete state.tierEdits[btn.dataset.tier];
+        break;
+      case 'clear-found':
+        delete state.found[id];
+        toast('Back to our estimate.');
+        break;
+      case 'goto-tab':
+        state.tab = btn.dataset.tabTarget;
+        save();
+        renderTabs();
+        renderBrowse();
+        $('#step-browse').scrollIntoView({ behavior: 'smooth' });
+        return;
       case 'remove-saved':
         state.saved = state.saved.filter((x) => x.id !== id);
         break;
@@ -1075,7 +1353,11 @@
     if (el.matches('[data-action="booked"]')) {
       state.booked[el.dataset.key] = el.checked;
       save();
-      el.closest('.book-step').classList.toggle('done', el.checked);
+      el.closest('.sum-item').classList.toggle('done', el.checked);
+      return;
+    }
+    if (el.matches('select[data-action="swap"]')) {
+      swapPart(el.dataset.tier, el.dataset.slot, el.value);
       return;
     }
     if (el.matches('select[data-action="sort"]')) {
@@ -1093,7 +1375,40 @@
     }
   }
 
+  /** Swap one part of a budget package for another option. */
+  function swapPart(key, slot, newId) {
+    const tier = currentTiers(packages(state.sort)).find((x) => x.key === key);
+    if (!tier) return;
+    const lists = okLists();
+    const p = tier.pkg;
+    const next = { travelId: p.travel.id, stayId: p.stay.id, groundId: p.ground ? p.ground.id : 'none' };
+    if (slot === 'travel') {
+      const travel = byId(lists.travel, newId);
+      const ground = P.matchGround(travel, p.ground, lists.grounds, W.airports);
+      next.travelId = newId;
+      next.groundId = ground ? ground.id : 'none';
+    } else if (slot === 'stay') next.stayId = newId;
+    else next.groundId = newId;
+    state.tierEdits[key] = next;
+    save();
+    renderOptions();
+    const card = document.querySelector(`select[data-tier="${key}"][data-slot="${slot}"]`);
+    if (card) card.focus();
+    toast('Package updated.');
+  }
+
   function onSubmit(e) {
+    const found = e.target.closest('form[data-found]');
+    if (found) {
+      e.preventDefault();
+      const v = Number(found.price.value);
+      if (!found.price.value || !(v >= 0)) return toast('Please type a price.');
+      state.found[found.dataset.found] = v;
+      save();
+      renderAll();
+      toast('Updated with the price you found.');
+      return;
+    }
     const form = e.target.closest('form[data-add]');
     if (!form) return;
     e.preventDefault();
@@ -1130,6 +1445,16 @@
     else if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => toast('Link copied — paste it into a text or email.'));
     else prompt('Copy this link:', url);
   });
+
+  // Draw a package's map when its "Show on a map" section is opened.
+  document.addEventListener('toggle', (e) => {
+    const d = e.target;
+    if (!(d instanceof HTMLDetailsElement) || !d.dataset.mapKey) return;
+    if (d.open) {
+      openMaps.add(d.dataset.mapKey);
+      drawMaps(d);
+    } else openMaps.delete(d.dataset.mapKey);
+  }, true);
 
   document.addEventListener('click', onClick);
   document.addEventListener('change', onChange);

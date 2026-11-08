@@ -282,6 +282,73 @@
     return picks;
   }
 
+  // ------------------------------------------------------------------ budget levels
+
+  /** A rough "how pleasant is this trip" score: nicer stay, less travel time, fewer stops. */
+  function comfortScore(p) {
+    return (
+      (p.stay.rating || 3.5) * 20 -
+      (p.doorMinutes || 0) / 30 -
+      (p.stops || 0) * 4 -
+      (p.stay.minutesToVenue ?? 20) / 10 +
+      (p.ground && p.ground.kind === 'car' ? (p.ground.seats || 4) * 0.5 : 0)
+    );
+  }
+
+  const TIERS = [
+    { key: 'saver', label: 'Budget saver', why: 'The lowest cost that still covers everything you need.' },
+    { key: 'value', label: 'Good value', why: 'A step up in comfort for a little more.' },
+    { key: 'comfort', label: 'Comfort', why: 'Easier travel and a nicer place to stay.' },
+    { key: 'splurge', label: 'Treat yourself', why: 'The nicest trip that fits your budget.' },
+  ];
+  const TIER_TARGETS = [0, 0.4, 0.7, 1];
+
+  /**
+   * Four packages at rising price levels. Level 1 is the cheapest trip.
+   * Each higher level is the most comfortable trip costing no more than its
+   * price target, between the cheapest trip and the budget (or, with no
+   * budget, the 90th-percentile price).
+   */
+  function budgetTiers(fits, budgetTotal) {
+    if (!fits.length) return [];
+    const sorted = [...fits].sort(SORTS.cheapest);
+    const min = sorted[0].total;
+    const top = budgetTotal != null ? budgetTotal : sorted[Math.floor((sorted.length - 1) * 0.9)].total;
+    const used = new Set();
+    const picks = [];
+    TIER_TARGETS.forEach((q, i) => {
+      const target = min + q * Math.max(0, top - min);
+      const pool = i === 0 ? sorted.slice(0, 1) : sorted.filter((p) => p.total <= target && !used.has(p.id));
+      const best = pool.reduce((b, p) => {
+        if (!b) return p;
+        const d = comfortScore(p) - comfortScore(b);
+        return d > 0.01 || (Math.abs(d) <= 0.01 && p.total < b.total) ? p : b;
+      }, null);
+      if (best) {
+        used.add(best.id);
+        picks.push(best);
+      }
+    });
+    picks.sort(SORTS.cheapest);
+    return picks.map((pkg, i) => ({ ...TIERS[i], pkg }));
+  }
+
+  /**
+   * After changing how someone gets there, keep a matching car:
+   * the same kind of car at the new airport, else the cheapest option there.
+   */
+  function matchGround(travel, current, grounds, airports) {
+    if (!travel || travel.kind === 'drive') return null;
+    if (current && current.airport === travel.to) return current;
+    const here = grounds.filter((g) => g.airport === travel.to);
+    const baseId = current ? current.id.split('@')[0] : null;
+    const same = baseId && here.find((g) => g.id.split('@')[0] === baseId);
+    if (same) return same;
+    const airport = (airports || []).find((a) => a.code === travel.to);
+    if (airport && airport.noCarOk && !current) return null;
+    return here.sort((a, b) => (a.daily || a.price || 0) - (b.daily || b.price || 0))[0] || null;
+  }
+
   /** Rental cars at each arrival airport, plus shuttles. */
   function expandGround(cars, transfers, airports) {
     const out = [];
@@ -315,6 +382,9 @@
     bestActivityPlan,
     buildPackages,
     recommendations,
+    budgetTiers,
+    comfortScore,
+    matchGround,
     expandGround,
   };
 
