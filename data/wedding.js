@@ -8,7 +8,7 @@
  */
 (function (root) {
   const WEDDING = {
-    couple: 'Our Wedding', // e.g. 'Sam & Riley'
+    couple: 'Deividas & Gina',
     date: '2027-05-29', // the ceremony day
     weekendStart: '2027-05-27',
     weekendEnd: '2027-05-29',

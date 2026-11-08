@@ -1,4 +1,6 @@
-# Wedding Travel Planner — The Red Earth Venue, Moab, Utah
+# Deividas & Gina — Wedding Travel Planner
+
+The Red Earth Venue, Moab, Utah
 
 A simple, large-print website that helps every guest plan and book their trip to the wedding weekend (May 27–29, 2027). It covers flights, hotels, vacation homes, Airbnbs, rental cars, shuttles and things to do, all within the guest's budget.
 
@@ -21,7 +23,6 @@ The flight fares and travel times are **estimates**, worked out from distance, n
 
 ## Make it yours: edit `data/wedding.js`
 
-- `couple`: your names (it currently says "Our Wedding")
 - `events`: the times and places for the weekend (they currently say "To be announced")
 - `help`: a name and phone number guests can call for help with booking
 - `stays`: add room-block codes with `perk: '...'` and your own booking links with `url: '...'`. Check the prices and the minutes to the venue.
