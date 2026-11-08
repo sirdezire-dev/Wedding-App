@@ -113,9 +113,6 @@ main { max-width: 920px; margin: 0 auto; padding: 0 16px 48px; }
 .step.is-done .num { background: var(--good); font-size: 0; }
 .step.is-done .num::after { content: '✓'; font-size: 1.3rem; }
 .step.is-done .step-sum { color: var(--good); font-weight: 600; }
-.step.is-locked { opacity: .55; box-shadow: none; }
-.step.is-locked .step-toggle { cursor: not-allowed; }
-.step.is-locked .num { background: #b9aa99; }
 .num-quick { background: var(--sage); font-size: 1.2rem; }
 .flow-intro { text-align: center; color: var(--muted); font-size: 1.1rem; margin: 22px 0 12px; }
 .link-btn { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }

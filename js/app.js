@@ -35,7 +35,7 @@
     custom: { flights: [], stays: [] },
     found: {}, // prices guests found online, by option id
     tierEdits: {}, // swaps made inside each budget package
-    openStep: 1, // which step is open (1-6), or null
+    openSteps: [1], // which steps are open
     quickOpen: false,
     confirmed: { when: false, budget: false, extras: false },
     textSize: 'normal',
@@ -60,6 +60,7 @@
         found: { ...d.found, ...raw.found },
         tierEdits: { ...d.tierEdits, ...raw.tierEdits },
         confirmed: { ...d.confirmed, ...raw.confirmed },
+        openSteps: Array.isArray(raw.openSteps) ? raw.openSteps : raw.openStep ? [raw.openStep] : d.openSteps,
       };
     } catch (e) {
       return d;
@@ -317,7 +318,7 @@
     save();
     renderAll();
     toast('Found you! Next, your dates.');
-    openStep(2);
+    openStep(2, { close: [1] });
   }
 
   // ---------------------------------------------------------------- step 2: when
@@ -1198,14 +1199,8 @@
     const opener = e.target.closest('[data-open-step]');
     if (opener) {
       const n = opener.dataset.openStep;
-      // Clicking the open step's header closes it.
-      if (opener.classList.contains('step-toggle') && n !== 'quick' && state.openStep === Number(n)) {
-        state.openStep = null;
-        save();
-        renderSteps();
-        return;
-      }
-      openStep(n);
+      if (opener.classList.contains('step-toggle')) toggleStep(n);
+      else openStep(n);
       return;
     }
     const nx = e.target.closest('[data-action="next-step"]');
@@ -1310,7 +1305,7 @@
         save();
         renderAll();
         toast('Package chosen! Add things to do, or continue to your summary.');
-        openStep(5);
+        openStep(5, { close: [4] });
         return;
       }
       case 'save-package': {
@@ -1363,7 +1358,7 @@
         state.confirmed.extras = false;
         save();
         renderAll();
-        openStep(4);
+        openStep(4, { close: [5, 6] });
         return;
       case 'print':
         window.print();
@@ -1475,16 +1470,9 @@
     }
   }
 
-  /** Steps open in order: 1-3 one after another, 4 and 5 once 1-3 are done, 6 once a trip is chosen. */
-  function stepAvailable(n) {
-    if (n <= 1) return true;
-    if (n <= 4) return stepDone(n - 1) && stepAvailable(n - 1);
-    if (n === 5) return stepDone(1) && stepDone(2) && stepDone(3);
-    return stepAvailable(5) && stepDone(4);
-  }
-
-  function firstOpenable() {
-    for (let n = 1; n <= 6; n++) if (!stepDone(n) && stepAvailable(n)) return n;
+  /** The first step that still needs an answer. */
+  function nextUnfinished(after = 0) {
+    for (let n = after + 1; n <= 6; n++) if (!stepDone(n)) return n;
     return 6;
   }
 
@@ -1539,18 +1527,15 @@
   function renderSteps() {
     for (let n = 1; n <= 6; n++) {
       const sec = document.getElementById(STEP_IDS[n]);
-      const open = state.openStep === n;
+      const open = state.openSteps.includes(n);
       const done = stepDone(n);
-      const avail = stepAvailable(n);
       sec.classList.toggle('is-open', open);
       sec.classList.toggle('is-done', done && !open);
-      sec.classList.toggle('is-locked', !avail);
       $(`#body-${n}`).hidden = !open;
       const btn = sec.querySelector('.step-toggle');
       btn.setAttribute('aria-expanded', String(open));
-      btn.setAttribute('aria-disabled', String(!avail));
-      $(`#sum-${n}`).textContent = !open && done ? stepSummary(n) : !avail ? `Finish step ${firstOpenable()} first` : '';
-      $(`#cue-${n}`).textContent = open ? 'Close' : done ? 'Change' : avail ? 'Open' : '';
+      $(`#sum-${n}`).textContent = !open && done ? stepSummary(n) : '';
+      $(`#cue-${n}`).textContent = open ? 'Close' : done ? 'Change' : 'Open';
       $(`#next-${n}`).innerHTML = nextControls(n);
     }
     const quickOpen = !!state.quickOpen;
@@ -1563,21 +1548,17 @@
       : 'Pick how you’ll get there, where you’ll stay and how you’ll get around. Then add things to do if you like.';
   }
 
-  /** Open one step (closing the others) and bring it into view. */
-  function openStep(n, { scroll = true } = {}) {
+  /** Open a step (others stay as they are) and bring it into view. */
+  function openStep(n, { scroll = true, close = [] } = {}) {
     if (n === 'quick') {
-      state.quickOpen = !state.quickOpen;
+      state.quickOpen = true;
       save();
       renderSteps();
-      if (state.quickOpen && scroll) $('#quick').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (scroll) $('#quick').scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
     n = Number(n);
-    if (!stepAvailable(n)) {
-      toast(`Please finish step ${firstOpenable()} first.`);
-      n = firstOpenable();
-    }
-    state.openStep = n;
+    state.openSteps = [...new Set([...state.openSteps.filter((x) => !close.includes(x)), n])];
     save();
     renderSteps();
     const sec = document.getElementById(STEP_IDS[n]);
@@ -1588,13 +1569,29 @@
     }
   }
 
+  function toggleStep(n) {
+    if (n === 'quick') {
+      state.quickOpen = !state.quickOpen;
+      save();
+      renderSteps();
+      return;
+    }
+    n = Number(n);
+    if (state.openSteps.includes(n)) {
+      state.openSteps = state.openSteps.filter((x) => x !== n);
+      save();
+      renderSteps();
+    } else openStep(n, { scroll: false });
+  }
+
   function nextStep(n) {
     if (n === 2) state.confirmed.when = true;
     if (n === 3) state.confirmed.budget = true;
     if (n === 5) state.confirmed.extras = true;
     save();
     renderAll();
-    openStep(n === 4 ? 5 : n + 1);
+    // Close the finished step and open the next one.
+    openStep(n === 4 ? 5 : n + 1, { close: [n] });
   }
 
   // ---------------------------------------------------------------- boot
@@ -1634,7 +1631,7 @@
   document.addEventListener('submit', onSubmit);
   document.addEventListener('keydown', onKeydown);
 
-  if (state.openStep != null && !stepAvailable(state.openStep)) state.openStep = firstOpenable();
+  if (!state.openSteps.length) state.openSteps = [nextUnfinished()];
   renderHeader();
   applyTextSize();
   fillForms();
