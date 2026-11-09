@@ -1159,8 +1159,10 @@
   let groups = []; // [{ id, name, people, parties, stay }] from the sheet
   let groupsStatus = 'idle'; // idle | loading | ok | error | off
   let groupsLoadedAt = 0;
-  let groupsOpen = !state.guest.groupId; // the "Which group?" panel
+  let groupsOpen = true; // the "Which family?" panel stays open unless the guest closes it
   let newGroupOpen = false;
+  let showAllFamilies = false;
+  const RECENT_FAMILIES = 4; // how many family buttons to show before "Show all"
 
   async function loadGroups(force = false) {
     const endpoint = (W.responses && W.responses.endpoint) || '';
@@ -1207,7 +1209,7 @@
     const myNames = g.names.trim();
     const mineExists = myNames && list.some((x) => x.name.toLowerCase() === myNames.toLowerCase());
     $('#create-family-btn').textContent = myNames ? `+ Create a family: ${myNames}` : '+ Create a family with my names';
-    $('#new-family').hidden = newGroupOpen || !!mineExists;
+    $('#new-family').hidden = newGroupOpen || !!mineExists || !!chosen;
     $('#group-panel').hidden = !groupsOpen;
     $('.group-toggle').setAttribute('aria-expanded', String(groupsOpen));
     $('#gp-cue').textContent = groupsOpen ? 'Close' : chosen ? 'Change' : 'Open';
@@ -1217,8 +1219,16 @@
     let html = '';
     if (groupsStatus === 'loading' && !list.length) html = '<p class="muted">Loading families…</p>';
     else if (groupsStatus === 'error') html = '<p class="notice warn">Couldn’t load the families just now. <button type="button" class="link-btn" data-action="reload-groups">Try again</button></p>';
+    // Your family first, then the most recently active ones; the rest behind "Show all".
+    const recent = list
+      .map((x, i) => ({ x, i }))
+      .sort((a, b) => (b.x.local ? 1 : 0) - (a.x.local ? 1 : 0) || (b.x.updated || 0) - (a.x.updated || 0) || a.i - b.i)
+      .map((o) => o.x);
+    const ordered = chosen ? [...recent.filter((x) => x.id === chosen.id), ...recent.filter((x) => x.id !== chosen.id)] : recent;
+    const shown = showAllFamilies ? ordered : ordered.slice(0, RECENT_FAMILIES);
     if (list.length) {
-      html += `<div class="group-opts">${list
+      html += `<p class="label">${showAllFamilies || ordered.length <= RECENT_FAMILIES ? 'Families' : 'Most recent families'}</p>`;
+      html += `<div class="group-opts">${shown
         .map((x) => {
           const on = x.id === g.groupId;
           const count = x.local ? (groupsStatus === 'off' ? 'Saved on this device' : 'New — others can join once you continue') : `${x.people} ${x.people === 1 ? 'person' : 'people'} so far${x.stay ? ` · staying at ${esc(x.stay)}` : ''}`;
@@ -1226,6 +1236,9 @@
             <span class="go-name">${on ? '✓ ' : ''}${esc(x.name)}</span><span class="go-meta">${count}</span></button>`;
         })
         .join('')}</div>`;
+      if (ordered.length > RECENT_FAMILIES) {
+        html += `<button type="button" class="btn btn-small" data-action="toggle-all-families" aria-expanded="${showAllFamilies}">${showAllFamilies ? 'Show fewer families' : `Show all ${ordered.length} families`}</button>`;
+      }
     } else if (groupsStatus !== 'loading' && groupsStatus !== 'error') {
       html += groupsStatus === 'off' ? '<p class="muted">Shared families aren’t switched on yet. You can still create yours below, and tell the others its name.</p>' : '<p class="muted">No families yet. Be the first: create yours below.</p>';
     }
@@ -1258,7 +1271,7 @@
     state.guest.groupName = g.name;
     const others = othersIn(g);
     if (others + trip().travelers > Number(state.trip.groupSize)) state.trip.groupSize = others + trip().travelers;
-    groupsOpen = false;
+    showAllFamilies = false; // back to the short list, with your family at the top
     newGroupOpen = false;
     save();
     renderAll();
@@ -1679,6 +1692,10 @@
         groupsOpen = true;
         save();
         renderAll();
+        return;
+      case 'toggle-all-families':
+        showAllFamilies = !showAllFamilies;
+        renderGroups();
         return;
       case 'reload-groups':
         loadGroups(true);

@@ -86,13 +86,15 @@ function groups_() {
   const values = sheet_().getDataRange().getValues();
   const headers = values.shift() || [];
   const col = (name) => headers.indexOf(name);
-  const gId = col('Group ID'), gName = col('Group name'), size = col('Party size'), stay = col('Place to stay');
+  const gId = col('Group ID'), gName = col('Group name'), size = col('Party size'), stay = col('Place to stay'), upd = col('Last updated');
   if (gId < 0) return [];
   const byId = {};
   values.forEach((r) => {
     const id = r[gId];
     if (!id) return;
-    const g = byId[id] || (byId[id] = { id: String(id), name: String(r[gName] || 'Group'), people: 0, parties: 0, stays: {} });
+    const g = byId[id] || (byId[id] = { id: String(id), name: String(r[gName] || 'Group'), people: 0, parties: 0, stays: {}, updated: 0 });
+    const t = r[upd] instanceof Date ? r[upd].getTime() : 0;
+    if (t > g.updated) g.updated = t;
     g.people += Number(r[size]) || 1;
     g.parties += 1;
     if (r[stay]) g.stays[r[stay]] = (g.stays[r[stay]] || 0) + 1;
@@ -100,6 +102,6 @@ function groups_() {
   return Object.keys(byId).map((k) => {
     const g = byId[k];
     const stays = Object.keys(g.stays).sort((a, b) => g.stays[b] - g.stays[a]);
-    return { id: g.id, name: g.name, people: g.people, parties: g.parties, stay: stays[0] || '' };
-  }).sort((a, b) => a.name.localeCompare(b.name));
+    return { id: g.id, name: g.name, people: g.people, parties: g.parties, stay: stays[0] || '', updated: g.updated };
+  }).sort((a, b) => b.updated - a.updated || a.name.localeCompare(b.name)); // most recently active first
 }
