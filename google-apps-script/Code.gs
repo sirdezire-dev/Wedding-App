@@ -16,7 +16,10 @@ const HEADERS = [
 
 function sheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sh = ss.getSheetByName(SHEET_NAME) || ss.insertSheet(SHEET_NAME);
+  // Use the "Guest answers" tab, or the first tab if it already has our headings.
+  const first = ss.getSheets()[0];
+  const sh = ss.getSheetByName(SHEET_NAME) ||
+    (first && first.getRange(1, 1).getValue() === HEADERS[0] ? first : ss.insertSheet(SHEET_NAME));
   if (sh.getLastRow() === 0) {
     sh.appendRow(HEADERS);
     sh.setFrozenRows(1);

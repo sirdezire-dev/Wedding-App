@@ -32,7 +32,7 @@
     // Paste your Google Apps Script web-app address here — see google-apps-script/SETUP.md.
     responses: {
       endpoint: '', // e.g. 'https://script.google.com/macros/s/AKfy.../exec'
-      sheetUrl: '', // optional: link to your Google Sheet, shown on the couple's page
+      sheetUrl: 'https://docs.google.com/spreadsheets/d/1MHg4Br30pPgHFvzlk7lh_hBgT_3V_-1bM6fDpex-L5I/edit', // your Google Sheet (private to you)
     },
 
     // Someone guests can call if they need help booking. Set to null to hide it.

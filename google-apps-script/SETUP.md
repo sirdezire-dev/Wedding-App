@@ -2,7 +2,7 @@
 
 This is where guests' answers go: their names, who they're staying with, where and when. Only you can see the sheet. Your "Who's staying with who" page reads it using a passcode.
 
-1. Go to **sheets.google.com** and create a **blank spreadsheet**. Name it something like *Wedding guest travel*.
+1. Open your sheet **Deividas & Gina — Wedding guest travel** in Google Drive (already created for you). To start a new one instead, create a blank spreadsheet at sheets.google.com.
 2. In the menu, click **Extensions → Apps Script**.
 3. Delete everything in the editor. Then copy all of [`Code.gs`](Code.gs) and paste it in.
 4. On the line `const PASSCODE = 'CHANGE-THIS-PASSCODE';`, replace `CHANGE-THIS-PASSCODE` with a passcode only you two know. Keep the quote marks.
