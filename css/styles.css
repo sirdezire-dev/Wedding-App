@@ -482,3 +482,64 @@ table.compare { width: 100%; min-width: 520px; border-collapse: collapse; }
 #same-stay .notice { margin-top: 4px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .new-family { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
 .btn-create-family { white-space: normal; text-align: left; justify-content: flex-start; }
+
+/* ---------- Compact "Book directly" ---------- */
+.quick-dates { margin: 0 0 10px; }
+.quick-rows { display: grid; gap: 8px; }
+.quick-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.quick-row:first-child { border-top: 0; }
+.qr-label { width: 72px; font-weight: 700; }
+.qr-btns { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+.qr-btns .btn { min-height: 44px; }
+.quick .hint { margin: 10px 0 0; font-size: .95rem; }
+
+/* ---------- Packages that open and close ---------- */
+.trip-card.is-pick { padding: 0; overflow: hidden; }
+.trip-card.is-pick > :not(.tc-toggle) { margin-left: 22px; margin-right: 22px; }
+.trip-card.is-pick.is-open { padding-bottom: 18px; }
+.tc-toggle {
+  width: 100%; display: flex; align-items: center; gap: 14px; padding: 16px 22px; min-height: 84px;
+  border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer;
+}
+.tc-head-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.tc-toggle .tc-label { font-size: 1.6rem; }
+.tc-outline { color: var(--muted); font-size: .95rem; }
+.tc-chosen { font: 700 .9rem var(--sans); color: var(--good); }
+.tc-toggle .tc-total span { font-size: 1.5rem; }
+.trip-card.is-pick.is-open .tc-toggle { border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+.tier-saver { border-left: 6px solid #1f5fbf; }
+.tier-comfort { border-left: 6px solid #9a4a2c; }
+.tier-luxury { border-left: 6px solid #8a6a12; }
+.btn-map-pin { margin: 4px 0; }
+@media (max-width: 700px) {
+  .tc-toggle { flex-wrap: wrap; padding: 14px 16px; }
+  .tc-toggle .tc-total { text-align: left; }
+  .trip-card.is-pick > :not(.tc-toggle) { margin-left: 16px; margin-right: 16px; }
+}
+
+/* ---------- Venue map ---------- */
+.num-map { background: var(--sage); font-size: 1.1rem; }
+.location-map { height: 380px; }
+.venue-pin span {
+  display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+  background: #2c6b3f; color: #fff; font-size: 20px; border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.35);
+}
+.stay-pin span {
+  display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%;
+  color: #fff; font: 700 15px var(--sans); border: 2px solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,.35);
+}
+.stay-pin-other span { font-size: 12px; opacity: .85; }
+.pin-list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 8px; }
+.pin-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.pin-text { flex: 1; min-width: 200px; }
+.pin-actions { display: flex; gap: 6px; }
+.pin-badge { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; color: #fff; font-weight: 700; flex: none; }
+.pin-saver { background: #1f5fbf; } .pin-comfort { background: #9a4a2c; } .pin-luxury { background: #8a6a12; } .pin-chosen { background: #2c6b3f; }
+@media (max-width: 700px) { .location-map { height: 300px; } }
+@media (max-width: 700px) {
+  .tc-toggle .tc-head-main { flex: 1 1 100%; }
+  .tc-toggle .tc-total { flex: 1; }
+  .quick-row { gap: 6px; }
+  .qr-label { width: 100%; }
+  .qr-btns .btn { min-height: 44px; padding: 6px 12px; font-size: .95rem; }
+}

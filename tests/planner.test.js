@@ -109,18 +109,18 @@ test('drive option offered when close, not when far', () => {
   assert.equal(T.driveOption({ lat: 40.71, lon: -74.0 }, venue, trip), null); // New York
 });
 
-test('budget tiers: four rising levels within budget', () => {
+test('budget tiers: three rising levels within budget', () => {
   const fl = [0, 1, 2].map((i) => ({ id: `f${i}`, kind: 'flight', to: 'SLC', price: 200 + i * 150, stops: 2 - i, durationMinutes: 500 - i * 100, homeMinutes: 20 }));
   const st = [1, 2, 3, 4].map((i) => ({ id: `s${i}`, nightly: 80 * i, maxGuests: 2, rating: 3.5 + i * 0.3, minutesToVenue: 20 }));
   const plan = P.budgetPlan('4000');
   const r = P.buildPackages({ travel: fl, stays: st, grounds, activities: [], trip, weddingDate: '2027-05-29', budget: plan, airports });
   const tiers = P.budgetTiers(r.fits, plan.total);
-  assert.equal(tiers.length, 4);
-  assert.deepEqual(tiers.map((x) => x.key), ['saver', 'value', 'comfort', 'splurge']);
+  assert.equal(tiers.length, 3);
+  assert.deepEqual(tiers.map((x) => x.key), ['saver', 'comfort', 'luxury']);
   assert.equal(tiers[0].pkg.total, Math.min(...r.fits.map((p) => p.total)));
-  for (let i = 1; i < 4; i++) assert.ok(tiers[i].pkg.total >= tiers[i - 1].pkg.total);
+  for (let i = 1; i < 3; i++) assert.ok(tiers[i].pkg.total >= tiers[i - 1].pkg.total);
   assert.ok(tiers.every((x) => x.pkg.total <= 4000));
-  assert.equal(new Set(tiers.map((x) => x.pkg.id)).size, 4);
+  assert.equal(new Set(tiers.map((x) => x.pkg.id)).size, 3);
 });
 
 test('swapping the flight keeps a matching car at the new airport', () => {

@@ -19,7 +19,7 @@ A travel planner for guests coming to the wedding weekend, **May 27–29, 2027**
   1. Where are you traveling from? (address search with OpenStreetMap; finds the nearest airports)
   2. Dates, number of people, names, and **"Will you be staying with other wedding guests?"** If yes, guests tap an existing group or start a new one; group names come from the Google Sheet (`?action=groups`).
   3. Budget for the whole trip, plus optional limits for flights, place to stay, and car or shuttle
-  4. Four packages (Budget saver, Good value, Comfort, Treat yourself). Each part can be swapped, prices found online can be entered, and the trip can be shown on a map.
+  4. Three packages (Saver, Comfort, Luxury) that open and close. Each part can be swapped, prices found online can be entered, and the trip can be shown on a map.
   5. Add things to do, or change any part
   6. Summary of everything chosen, with booking buttons, "I've booked this" tick boxes, a route map, the total against the budget, and a button to send the plans to the couple
 - **$ USD / £ GBP switch** for every price

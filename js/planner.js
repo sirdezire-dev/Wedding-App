@@ -296,15 +296,14 @@
   }
 
   const TIERS = [
-    { key: 'saver', label: 'Budget saver', why: 'The lowest cost that still covers everything you need.' },
-    { key: 'value', label: 'Good value', why: 'A step up in comfort for a little more.' },
-    { key: 'comfort', label: 'Comfort', why: 'Easier travel and a nicer place to stay.' },
-    { key: 'splurge', label: 'Treat yourself', why: 'The nicest trip that fits your budget.' },
+    { key: 'saver', label: 'Saver', why: 'The lowest cost that still covers everything you need.' },
+    { key: 'comfort', label: 'Comfort', why: 'Easier travel and a nicer place to stay, for a little more.' },
+    { key: 'luxury', label: 'Luxury', why: 'The nicest trip that fits your budget.' },
   ];
-  const TIER_TARGETS = [0, 0.4, 0.7, 1];
+  const TIER_TARGETS = [0, 0.5, 1];
 
   /**
-   * Four packages at rising price levels. Level 1 is the cheapest trip.
+   * Three packages at rising price levels (Saver, Comfort, Luxury). Level 1 is the cheapest trip.
    * Each higher level is the most comfortable trip costing no more than its
    * price target, between the cheapest trip and the budget (or, with no
    * budget, the 90th-percentile price).

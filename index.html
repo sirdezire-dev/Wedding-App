@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-  <link rel="stylesheet" href="css/styles.css?v=15" />
+  <link rel="stylesheet" href="css/styles.css?v=16" />
 </head>
 <body>
   <a class="skip-link" href="#step-home">Skip to trip planning</a>
@@ -38,23 +38,19 @@
     <p class="hero-date" id="hero-date"></p>
     <p class="hero-venue" id="hero-venue"></p>
     <p class="hero-countdown" id="countdown"></p>
-    <div class="hero-actions">
-      <button type="button" class="btn btn-primary btn-xl" data-open-step="1">Start planning my trip</button>
-      <button type="button" class="btn btn-xl btn-light" data-open-step="quick">I already know what I want</button>
-    </div>
   </header>
 
   <main>
     <!-- Quick booking (separate shortcut) -->
     <section class="step quick" id="quick">
       <h2 class="step-h"><button type="button" class="step-toggle" data-open-step="quick" aria-expanded="false" aria-controls="body-quick">
-        <span class="num num-quick" aria-hidden="true">✈</span><span class="step-text"><span class="step-title">Book directly</span><span class="step-sum">Already know what you want? Flights, hotels, homes and cars, with the wedding dates filled in.</span></span><span class="step-cue" id="cue-quick" aria-hidden="true"></span></button></h2>
+        <span class="num num-quick" aria-hidden="true">✈</span><span class="step-text"><span class="step-title">Book directly</span><span class="step-sum">Flights, hotels, homes and cars for the wedding dates</span></span><span class="step-cue" id="cue-quick" aria-hidden="true"></span></button></h2>
       <div class="step-body" id="body-quick">
         <div id="quick-body"></div>
       </div>
     </section>
 
-    <p class="flow-intro">Or let us help you, one step at a time:</p>
+    <p class="flow-intro">Or plan your trip step by step:</p>
 
     <!-- 1. Where from -->
     <section class="step" id="step-home" data-step="1">
@@ -169,6 +165,21 @@
       </div>
     </section>
 
+    <!-- Map: venue + where you'd stay -->
+    <section class="step map-section" id="map-section">
+      <h2 class="step-h"><button type="button" class="step-toggle" data-action="toggle-map" aria-expanded="true" aria-controls="body-map">
+        <span class="num num-map" aria-hidden="true">📍</span><span class="step-text"><span class="step-title">Map: the venue and where you’d stay</span><span class="step-sum" id="sum-map"></span></span><span class="step-cue" id="cue-map" aria-hidden="true"></span></button></h2>
+      <div class="step-body" id="body-map">
+        <p class="hint" id="map-hint"></p>
+        <div id="location-map" class="trip-map location-map" role="img" aria-label="Map of the wedding venue and the places to stay in your packages"></div>
+        <div class="map-btns">
+          <button type="button" class="btn btn-small" data-action="map-fit">Show everything</button>
+          <button type="button" class="btn btn-small" data-action="toggle-all-stays" aria-pressed="false" id="all-stays-btn">Show all places to stay</button>
+        </div>
+        <ul class="pin-list" id="pin-list"></ul>
+      </div>
+    </section>
+
     <!-- 4. Packages -->
     <section class="step" id="step-options" data-step="4">
       <h2 class="step-h"><button type="button" class="step-toggle" data-open-step="4" aria-expanded="false" aria-controls="body-4">
@@ -219,12 +230,12 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script src="data/wedding.js?v=15"></script>
-  <script src="data/airports.js?v=15"></script>
-  <script src="js/planner.js?v=15"></script>
-  <script src="js/travel.js?v=15"></script>
-  <script src="js/links.js?v=15"></script>
-  <script src="js/tripmap.js?v=15"></script>
-  <script src="js/app.js?v=15"></script>
+  <script src="data/wedding.js?v=16"></script>
+  <script src="data/airports.js?v=16"></script>
+  <script src="js/planner.js?v=16"></script>
+  <script src="js/travel.js?v=16"></script>
+  <script src="js/links.js?v=16"></script>
+  <script src="js/tripmap.js?v=16"></script>
+  <script src="js/app.js?v=16"></script>
 </body>
 </html>

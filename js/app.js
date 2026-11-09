@@ -40,6 +40,8 @@
     quickOpen: false,
     confirmed: { when: false, budget: false, extras: false },
     textSize: 'normal',
+    mapOpen: true,
+    showAllStays: false,
     currency: /^en-GB/i.test(navigator.language || '') ? 'GBP' : 'USD',
   });
 
@@ -266,35 +268,31 @@
     const t = trip();
     const n = P.nights(t.arrive, t.depart);
     const from = state.origins[0] || '';
-    const ok = n > 0;
     const d = { arrive: t.arrive, depart: t.depart, travelers: t.travelers };
-    const tile = (title, hint, links) => `
-      <div class="quick-tile">
-        <h3>${title}</h3>
-        <p class="muted">${hint}</p>
-        <div class="quick-btns">${linkButtons(links.slice(0, 1), 'btn-primary')}${linkButtons(links.slice(1))}</div>
-      </div>`;
+    const row = (label, links) => `
+      <div class="quick-row"><span class="qr-label">${label}</span>
+        <div class="qr-btns">${linkButtons(links, 'btn-small')}</div></div>`;
     $('#quick-body').innerHTML = `
-      <p class="lead">Each button opens the booking website with the wedding dates already filled in:
-        <b>${ok ? `${niceDate(t.arrive, true)} to ${niceDate(t.depart, true)}` : 'choose your dates in step 2'}</b>, ${plural(t.travelers, 'person', 'people')}.
-        <button type="button" class="link-btn" data-open-step="2">Change dates or people</button></p>
-      <div class="quick-grid">
-        ${tile('Flights', `Salt Lake City has the most flights (3¾ hours’ drive). Moab’s own airport is 15 minutes away but has few flights.${from ? ` Searching from ${esc(airportLabel(from))}.` : ''}`, [
-          { label: 'Flights to Salt Lake City', url: L.flightTo({ from, to: 'SLC', ...d }) },
-          { label: 'Flights to Moab', url: L.flightTo({ from, to: 'CNY', ...d }) },
-          { label: 'Flights to Grand Junction', url: L.flightTo({ from, to: 'GJT', ...d }) },
+      <p class="quick-dates">${n > 0 ? `<b>${niceDate(t.arrive)} – ${niceDate(t.depart)}</b>` : 'Choose your dates in step 2'} · ${plural(t.travelers, 'person', 'people')} ·
+        <button type="button" class="link-btn" data-open-step="2">Change</button></p>
+      <div class="quick-rows">
+        ${row('Flights', [
+          { label: 'Salt Lake City', url: L.flightTo({ from, to: 'SLC', ...d }) },
+          { label: 'Moab', url: L.flightTo({ from, to: 'CNY', ...d }) },
+          { label: 'Grand Junction', url: L.flightTo({ from, to: 'GJT', ...d }) },
         ])}
-        ${tile('Hotels', 'Hotels in Moab, about 15–20 minutes from the venue.', [
-          { label: 'Hotels on Booking.com', url: L.staySearch({ place: W.venue.searchName, ...d })[0].url },
+        ${row('Hotels', [
+          { label: 'Booking.com', url: L.staySearch({ place: W.venue.searchName, ...d })[0].url },
           { label: 'Google Hotels', url: `https://www.google.com/travel/search?q=${encodeURIComponent(`hotels in ${W.venue.searchName}`)}&checkin=${t.arrive}&checkout=${t.depart}` },
         ])}
-        ${tile('Airbnbs & vacation homes', 'Good for families or groups sharing a house.', L.staySearch({ place: W.venue.searchName, ...d, travelers: t.groupSize }).slice(1))}
-        ${tile('Rental cars', 'You’ll need a car in Moab. Pick it up at the airport you fly into.', [
-          { label: 'Cars at Salt Lake City', url: L.car({ airport: 'SLC', arrive: t.arrive, depart: t.depart })[0].url },
-          { label: 'Cars at Moab airport', url: L.car({ airport: 'CNY', arrive: t.arrive, depart: t.depart })[0].url },
-          { label: 'Cars at Grand Junction', url: L.car({ airport: 'GJT', arrive: t.arrive, depart: t.depart })[0].url },
+        ${row('Homes', L.staySearch({ place: W.venue.searchName, ...d, travelers: t.groupSize }).slice(1).map((l) => ({ ...l, label: l.label.replace(/^(Homes|Vacation homes) on /, '') })))}
+        ${row('Cars', [
+          { label: 'Salt Lake City', url: L.car({ airport: 'SLC', arrive: t.arrive, depart: t.depart })[0].url },
+          { label: 'Moab', url: L.car({ airport: 'CNY', arrive: t.arrive, depart: t.depart })[0].url },
+          { label: 'Grand Junction', url: L.car({ airport: 'GJT', arrive: t.arrive, depart: t.depart })[0].url },
         ])}
-      </div>`;
+      </div>
+      <p class="hint">Most flights go to Salt Lake City (3¾ hours’ drive). Moab’s airport is 15 minutes away. You’ll need a car in Moab.</p>`;
   }
 
   // ---------------------------------------------------------------- step 1: home
@@ -500,8 +498,9 @@
     }
 
     const tiers = currentTiers(res);
-    const intro = `<p class="lead">${b.total == null ? 'Four packages, from the lowest price up.' : `Four packages at different price levels, all within your <b>${fmt(b.total)}</b> budget.`}
-      Don’t like a part? Use <b>Change</b> to swap it for another option we found. Found a better price online? Enter it and the total updates.</p>`;
+    lastTiers = tiers;
+    const intro = `<p class="lead">${b.total == null ? 'Three packages, from the lowest price up.' : `Three packages, all within your <b>${fmt(b.total)}</b> budget.`}
+      Tap a package to open it. Inside, use <b>Change</b> to swap any part, or enter a better price you found online.</p>`;
 
     const all = state.showAll
       ? `<div class="all-head">
@@ -518,6 +517,7 @@
 
     el.innerHTML = `${intro}${capNote}<div class="picks">${tiers.map((tier) => tripCard(tier.pkg, tier)).join('')}</div>${all}${compareTable()}`;
     drawMaps(el);
+    renderLocationMap();
   }
 
   function capRemovalNote(removed) {
@@ -705,13 +705,17 @@
     });
   }
 
+  const openTiers = new Set(); // which packages are open
+  let lastTiers = [];
+
   function tripCard(p, tier) {
     const t = trip();
     const n = P.nights(t.arrive, t.depart);
     const b = budget();
     const tr = p.travel;
     const arrival = tr.kind === 'flight' ? AIRPORT[tr.to] : null;
-    const editable = tier && tier.key;
+    const editable = !!(tier && tier.key);
+    const open = !editable || openTiers.has(tier.key);
     const extras = p.leftover == null
       ? ''
       : p.leftover < 0
@@ -720,15 +724,27 @@
           ? `<p class="tc-extra">You’d have <b>${fmt(p.leftover)}</b> left. That’s enough for: ${p.activityPlan.map((a) => esc(a.name)).join(', ')}.</p>`
           : `<p class="tc-extra plain">You’d have <b>${fmt(p.leftover)}</b> left for meals and extras.</p>`;
     const isChosen = state.selection.travelId === tr.id && state.selection.stayId === p.stay.id && (state.selection.groundId || 'none') === (p.ground ? p.ground.id : 'none');
-    const level = tier && tier.key ? ['saver', 'value', 'comfort', 'splurge'].indexOf(tier.key) + 1 : 0;
-    return `
-      <article class="trip-card ${tier ? 'is-pick' : ''} ${isChosen ? 'is-chosen' : ''}">
-        <header class="tc-head">
-          <div>
-            ${tier ? `<p class="tc-level">${level ? `${sym().repeat(level)}<span class="sr-only">Level ${level} of 4</span>` : ''}</p><p class="tc-label">${esc(tier.label)}</p><p class="tc-why">${esc(tier.why)}</p>` : ''}
-          </div>
-          <div class="tc-total"><span>${fmt(p.total)}</span><small>total for ${plural(t.travelers, 'person', 'people')}, ${plural(n, 'night')}${b.total != null ? `<br/>${Math.round((p.total / b.total) * 100)}% of your budget` : ''}</small></div>
-        </header>
+    const level = editable ? ['saver', 'comfort', 'luxury'].indexOf(tier.key) + 1 : 0;
+    const pct = b.total != null ? `${Math.round((p.total / b.total) * 100)}% of your budget` : `for ${plural(t.travelers, 'person', 'people')}, ${plural(n, 'night')}`;
+    const outline = `${travelShort(tr)} · ${p.stay.name}${p.ground ? ` · ${p.ground.name}` : ''}`;
+
+    const head = editable
+      ? `<button type="button" class="tc-toggle" data-action="toggle-tier" data-tier="${tier.key}" aria-expanded="${open}">
+          <span class="tc-head-main">
+            <span class="tc-level">${sym().repeat(level)}<span class="sr-only">Level ${level} of 3</span></span>
+            <span class="tc-label">${esc(tier.label)}${isChosen ? ' <span class="tc-chosen">✓ Chosen</span>' : ''}</span>
+            <span class="tc-outline">${esc(outline)}</span>
+          </span>
+          <span class="tc-total"><span>${fmt(p.total)}</span><small>${pct}</small></span>
+          <span class="step-cue">${open ? 'Close' : 'Open'}</span>
+        </button>`
+      : `<header class="tc-head"><div></div>
+          <div class="tc-total"><span>${fmt(p.total)}</span><small>total for ${plural(t.travelers, 'person', 'people')}, ${plural(n, 'night')}</small></div></header>`;
+
+    const body = !open
+      ? ''
+      : `
+        ${editable ? `<p class="tc-why">${esc(tier.why)}</p>` : ''}
         <div class="tc-parts">
           <section class="tc-part">
             <div class="tc-row"><h4>Getting there</h4><p class="amt">${fmt(p.cost.travel)}${priceTag(tr)}</p></div>
@@ -737,7 +753,8 @@
           </section>
           <section class="tc-part">
             <div class="tc-row"><h4>Staying at</h4><p class="amt">${fmt(p.cost.stay)}${priceTag(p.stay)}</p></div>
-            <p><b>${esc(p.stay.name)}</b><br/>${STAY_TYPES[p.stay.type]}${p.stay.rating ? ` · rated ${p.stay.rating} of 5` : ''}${p.stay.minutesToVenue != null ? ` · ${p.stay.minutesToVenue} min to the venue` : ''}</p>
+            <p><b>${esc(p.stay.name)}</b><br/>${STAY_TYPES[p.stay.type]}${p.stay.rating ? ` · rated ${p.stay.rating} of 5` : ''} · about ${driveMinutes(p.stay)} min drive to the venue</p>
+            ${p.stay.lat != null ? `<button type="button" class="btn btn-small btn-map-pin" data-action="map-focus" data-id="${esc(p.stay.id)}">📍 Show on the map</button>` : ''}
             ${editable ? swapSelect(tier, 'stay', p) + liveControls('stay', p.stay, stayLinks(p.stay, t)) : ''}
           </section>
           <section class="tc-part">
@@ -748,14 +765,121 @@
         </div>
         <p class="tc-door">Door to venue: ${hoursText(p.doorMinutes)} each way</p>
         ${extras}
-        ${tier && tier.key ? `<details class="more map-details" data-map-key="${tier.key}" ${openMaps.has(tier.key) ? 'open' : ''}>
-          <summary>Show this trip on a map</summary>${mapBlock(`map-${tier.key}`, p)}</details>` : ''}
         <div class="tc-actions">
           <button type="button" class="btn btn-primary" data-action="use-package" data-id="${esc(p.id)}">${isChosen ? 'Chosen ✓ — see your summary' : 'Choose this package'}</button>
           <button type="button" class="btn btn-quiet" data-action="save-package" data-id="${esc(p.id)}">Save to compare</button>
           ${tier && tier.edited ? `<button type="button" class="btn btn-quiet" data-action="reset-tier" data-tier="${tier.key}">Undo my changes</button>` : ''}
-        </div>
+        </div>`;
+
+    return `
+      <article class="trip-card ${editable ? 'is-pick tier-' + tier.key : ''} ${open ? 'is-open' : 'is-closed'} ${isChosen ? 'is-chosen' : ''}">
+        ${head}
+        ${body}
       </article>`;
+  }
+
+  // ---------------------------------------------------------------- location map
+  const DRIVE_KEY = 'wedding-drive';
+  let driveCache = {};
+  try { driveCache = JSON.parse(localStorage.getItem(DRIVE_KEY) || '{}') || {}; } catch (e) { driveCache = {}; }
+  const driveKey = (x) => `${Number(x.lat).toFixed(4)},${Number(x.lon).toFixed(4)}`;
+
+  /** Minutes by car from a place to the venue: real route if we have it, else the couple's figure, else an estimate. */
+  function driveMinutes(x) {
+    if (x && x.lat != null && driveCache[driveKey(x)] != null) return driveCache[driveKey(x)];
+    if (x && x.minutesToVenue != null) return x.minutesToVenue;
+    if (x && x.lat != null) return Math.max(5, Math.round((T.roadMiles(x, W.venue) / 35) * 60));
+    return '?';
+  }
+
+  /** Ask the free OSRM route service for real driving times to the venue (cached on this device). */
+  let driveFetching = false;
+  async function fetchDriveTimes(places) {
+    const todo = places.filter((x) => x.lat != null && driveCache[driveKey(x)] == null).slice(0, 40);
+    if (!todo.length || driveFetching) return;
+    driveFetching = true;
+    try {
+      const coords = [W.venue, ...todo].map((x) => `${x.lon},${x.lat}`).join(';');
+      const res = await fetch(`https://router.project-osrm.org/table/v1/driving/${coords}?destinations=0&sources=${todo.map((_, i) => i + 1).join(';')}`);
+      const data = await res.json();
+      if (data.code === 'Ok') {
+        todo.forEach((x, i) => {
+          const sec = data.durations && data.durations[i] && data.durations[i][0];
+          if (sec != null) driveCache[driveKey(x)] = Math.max(1, Math.round(sec / 60));
+        });
+        try { localStorage.setItem(DRIVE_KEY, JSON.stringify(driveCache)); } catch (e) { /* ignore */ }
+        renderOptions();
+      }
+    } catch (e) {
+      /* keep estimates */
+    } finally {
+      driveFetching = false;
+    }
+  }
+
+  const TIER_LETTER = { saver: 'S', comfort: 'C', luxury: 'L' };
+
+  /** Pins: the place to stay in each package, the guest's chosen place, and (optionally) every place. */
+  function mapPins() {
+    const pins = new Map();
+    const add = (stay, label, kind, letter) => {
+      if (!stay || stay.lat == null) return;
+      const existing = pins.get(stay.id);
+      if (existing && kind === 'other') return; // already pinned for a package or as the guest's choice
+      const pin = existing || { id: stay.id, stay, labels: [], kind, letter };
+      pin.labels.push(label);
+      if (kind !== 'other') { pin.kind = pin.kind === 'other' ? kind : pin.kind; pin.letter = pin.letter || letter; }
+      pins.set(stay.id, pin);
+    };
+    const sel = selected();
+    if (sel.stay) add(sel.stay, 'Your choice', 'chosen', '✓');
+    lastTiers.forEach((tr) => add(tr.pkg.stay, tr.label, tr.key, TIER_LETTER[tr.key]));
+    if (state.showAllStays) allStays().forEach((x) => add(x, STAY_TYPES[x.type], 'other', '•'));
+    return [...pins.values()];
+  }
+
+  function renderLocationMap() {
+    const open = state.mapOpen;
+    $('#body-map').hidden = !open;
+    $('#map-section .step-toggle').setAttribute('aria-expanded', String(open));
+    $('#cue-map').textContent = open ? 'Close' : 'Open';
+    $('#all-stays-btn').setAttribute('aria-pressed', String(state.showAllStays));
+    $('#all-stays-btn').textContent = state.showAllStays ? 'Hide other places' : 'Show all places to stay';
+    const pins = mapPins();
+    $('#sum-map').textContent = pins.length ? `${plural(pins.length, 'place', 'places')} pinned · tap a pin for the drive time` : `${W.venue.name}, ${W.venue.city}`;
+    $('#map-hint').textContent = lastTiers.length
+      ? 'Pins show where the places to stay in your packages are, and how long the drive to the venue takes. Swap a place in a package and its pin moves.'
+      : 'This is the wedding venue. When your packages are ready (step 4), the places to stay will be pinned here.';
+    const directions = (x) => `https://www.google.com/maps/dir/?api=1&origin=${x.lat},${x.lon}&destination=${encodeURIComponent(W.venue.address)}&travelmode=driving`;
+    $('#pin-list').innerHTML = pins
+      .filter((p) => p.kind !== 'other')
+      .map((p) => `<li>
+        <span class="pin-badge pin-${p.kind}" aria-hidden="true">${p.letter}</span>
+        <span class="pin-text"><b>${esc(p.labels.join(' & '))}</b>: ${esc(p.stay.name)}<br/><span class="muted">About ${driveMinutes(p.stay)} min drive to the venue</span></span>
+        <span class="pin-actions"><button type="button" class="btn btn-small" data-action="map-focus" data-id="${esc(p.id)}">Show</button>
+        <a class="btn btn-small" href="${esc(directions(p.stay))}" target="_blank" rel="noopener">Directions ↗</a></span></li>`)
+      .join('');
+    if (!open) return;
+    const el = $('#location-map');
+    if (!el || el.closest('[hidden]')) return;
+    window.TripMap.renderLocation(el, {
+      venue: { lat: W.venue.lat, lon: W.venue.lon, label: W.venue.name },
+      pins: pins.map((p) => ({
+        id: p.id, lat: p.stay.lat, lon: p.stay.lon, kind: p.kind, letter: p.letter,
+        html: `<b>${esc(p.labels.join(' & '))}</b><br/>${esc(p.stay.name)}<br/>About <b>${driveMinutes(p.stay)} min</b> drive to the venue<br/><a href="${esc(directions(p.stay))}" target="_blank" rel="noopener">Driving directions ↗</a>`,
+      })),
+    });
+    fetchDriveTimes(pins.map((p) => p.stay));
+  }
+
+  function focusOnMap(id) {
+    state.mapOpen = true;
+    save();
+    renderLocationMap();
+    const sec = $('#map-section');
+    sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const el = $('#location-map');
+    setTimeout(() => el && el._focus && el._focus(id), 350);
   }
 
   function findPackage(id) {
@@ -877,6 +1001,7 @@
           <label class="field"><span>Price per night (${sym()})</span><input name="nightly" type="number" min="0" required /></label>
           <label class="field"><span>Sleeps how many</span><input name="maxGuests" type="number" min="1" value="2" required /></label>
           <label class="field"><span>Cleaning fee (${sym()})</span><input name="cleaningFee" type="number" min="0" value="0" /></label>
+          <label class="field"><span>Address (for the map)</span><input name="address" type="text" maxlength="200" placeholder="Street, Moab, UT" /></label>
           <label class="field"><span>Link (optional)</span><input name="url" type="url" placeholder="https://" /></label>
           <div class="field"><span>&nbsp;</span><button class="btn btn-primary" type="submit">Add this place</button></div>
         </form></details>`;
@@ -1206,9 +1331,9 @@
     const list = allGroups();
     const chosen = list.find((x) => x.id === g.groupId) || (g.groupId ? { id: g.groupId, name: g.groupName, people: 0, stay: '' } : null);
     $('#gp-current').textContent = chosen ? `Your family: ${chosen.name}` : '';
-    const myNames = g.names.trim();
+    const myNames = familyName(g.names);
     const mineExists = myNames && list.some((x) => x.name.toLowerCase() === myNames.toLowerCase());
-    $('#create-family-btn').textContent = myNames ? `+ Create a family: ${myNames}` : '+ Create a family with my names';
+    $('#create-family-btn').textContent = myNames ? `+ Create: ${myNames}` : '+ Create a family with my names';
     $('#new-family').hidden = newGroupOpen || !!mineExists || !!chosen;
     $('#group-panel').hidden = !groupsOpen;
     $('.group-toggle').setAttribute('aria-expanded', String(groupsOpen));
@@ -1278,9 +1403,16 @@
     toast(`You’re staying with “${g.name}”.`);
   }
 
-  /** One tap: the family is named with the names the guest already typed. */
+  /** "Linda and Tom Smith" -> "Linda and Tom Smith family" */
+  function familyName(names) {
+    const n = String(names || '').trim().replace(/\s+/g, ' ');
+    if (!n) return '';
+    return (/\bfamily$/i.test(n) ? n : `${n} family`).slice(0, 80);
+  }
+
+  /** One tap: the family is named with the names the guest already typed, plus "family". */
   function createFromNames() {
-    const names = state.guest.names.trim();
+    const names = familyName(state.guest.names);
     if (!names) {
       toast('First type your name in the box above.');
       const f = $('#guest-form').names;
@@ -1453,7 +1585,7 @@
         g.names = value.slice(0, 200);
         const local = g.groupLocal;
         if (local && local.auto && g.groupId === local.id && !groups.some((x) => x.id === local.id) && g.names.trim()) {
-          local.name = g.names.trim().slice(0, 80);
+          local.name = familyName(g.names);
           g.groupName = local.name;
         }
         save();
@@ -1519,6 +1651,20 @@
       };
       state.custom.stays.push(item);
       state.selection.stayId = item.id;
+      if (d.address && d.address.trim()) {
+        // Find it on the map, then work out the drive to the venue.
+        T.geocode(d.address.trim()).then((hits) => {
+          const hit = hits && hits[0];
+          const mine = state.custom.stays.find((x) => x.id === item.id);
+          if (!hit || !mine) return toast('We couldn’t find that address on the map.');
+          mine.lat = hit.lat;
+          mine.lon = hit.lon;
+          mine.address = d.address.trim().slice(0, 200);
+          save();
+          renderAll();
+          toast('Pinned on the map.');
+        });
+      }
     }
     save();
     renderAll();
@@ -1664,6 +1810,31 @@
         toast(`${rec.name} chosen.`);
         break;
       }
+      case 'toggle-tier': {
+        const k = btn.dataset.tier;
+        if (openTiers.has(k)) openTiers.delete(k);
+        else openTiers.add(k);
+        renderOptions();
+        return;
+      }
+      case 'toggle-map':
+        state.mapOpen = !state.mapOpen;
+        save();
+        renderLocationMap();
+        return;
+      case 'toggle-all-stays':
+        state.showAllStays = !state.showAllStays;
+        save();
+        renderLocationMap();
+        return;
+      case 'map-fit': {
+        const el = $('#location-map');
+        if (el && el._fit) el._fit();
+        return;
+      }
+      case 'map-focus':
+        focusOnMap(id);
+        return;
       case 'toggle-groups':
         groupsOpen = !groupsOpen;
         if (groupsOpen) loadGroups();
@@ -1673,7 +1844,7 @@
         newGroupOpen = !newGroupOpen;
         renderGroups();
         if (newGroupOpen) {
-          if (!$('#new-group-name').value) $('#new-group-name').value = state.guest.names.trim();
+          if (!$('#new-group-name').value) $('#new-group-name').value = familyName(state.guest.names);
           $('#new-group-name').focus();
         }
         return;
@@ -1805,6 +1976,7 @@
     } else if (slot === 'stay') next.stayId = newId;
     else next.groundId = newId;
     state.tierEdits[key] = next;
+    openTiers.add(key);
     save();
     renderOptions();
     const card = document.querySelector(`select[data-tier="${key}"][data-slot="${slot}"]`);
@@ -1999,6 +2171,7 @@
     renderBrowse();
     renderMyTrip();
     renderTripBar();
+    renderLocationMap();
   }
 
   $('#share-btn').addEventListener('click', () => {

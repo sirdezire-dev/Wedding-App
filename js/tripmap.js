@@ -93,5 +93,85 @@
     return true;
   }
 
-  root.TripMap = { render };
+  // ---------------------------------------------------------------- venue + places-to-stay map
+  const PIN_COLORS = { saver: '#1f5fbf', comfort: '#9a4a2c', luxury: '#8a6a12', chosen: '#2c6b3f', other: '#7d746c' };
+
+  /**
+   * Map of the wedding venue with a pin for each place to stay.
+   * opts = { venue: {lat, lon, label}, pins: [{ id, lat, lon, kind, letter, html }] }
+   * Adds el._focus(id) and el._fit() for the page's buttons.
+   */
+  function renderLocation(el, opts) {
+    const L = root.L;
+    if (!el) return false;
+    if (!L) {
+      el.innerHTML = '<p class="map-missing">The map couldn’t load. Check your internet connection.</p>';
+      el.classList.add('is-missing');
+      return false;
+    }
+    let state = maps.get(el);
+    if (!state) {
+      const map = L.map(el, { scrollWheelZoom: false, tap: true });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      }).addTo(map);
+      state = { map, layer: L.layerGroup().addTo(map), markers: {}, fitted: false, remove: () => map.remove() };
+      maps.set(el, state);
+    }
+    const { map, layer } = state;
+    layer.clearLayers();
+    state.markers = {};
+
+    const v = opts.venue;
+    L.marker([v.lat, v.lon], {
+      icon: L.divIcon({ className: 'venue-pin', html: '<span>♥</span>', iconSize: [40, 40], iconAnchor: [20, 20] }),
+      zIndexOffset: 1000,
+      title: v.label,
+    })
+      .bindTooltip(`${v.label} (the wedding)`, { permanent: true, direction: 'top', offset: [0, -18], className: 'map-label map-venue' })
+      .addTo(layer);
+
+    opts.pins.forEach((p) => {
+      const color = PIN_COLORS[p.kind] || PIN_COLORS.other;
+      if (p.kind !== 'other') {
+        L.polyline([[p.lat, p.lon], [v.lat, v.lon]], { color, weight: 3, dashArray: '6 6', opacity: 0.8 }).addTo(layer);
+      }
+      const size = p.kind === 'other' ? 22 : 32;
+      const m = L.marker([p.lat, p.lon], {
+        icon: L.divIcon({
+          className: `stay-pin stay-pin-${p.kind}`,
+          html: `<span style="background:${color}">${p.letter || ''}</span>`,
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2],
+        }),
+        zIndexOffset: p.kind === 'other' ? 0 : 500,
+      }).bindPopup(p.html, { maxWidth: 260 });
+      m.addTo(layer);
+      state.markers[p.id] = m;
+    });
+
+    const all = [[v.lat, v.lon], ...opts.pins.map((p) => [p.lat, p.lon])];
+    const fit = () => {
+      if (all.length === 1) map.setView(all[0], 12);
+      else map.fitBounds(L.latLngBounds(all), { padding: [50, 50], maxZoom: 13 });
+    };
+    el._fit = fit;
+    el._focus = (id) => {
+      const m = state.markers[id];
+      if (!m) return fit();
+      map.setView(m.getLatLng(), 13);
+      m.openPopup();
+    };
+    // Only re-zoom when the pins change, so the map doesn't jump while the guest types.
+    const sig = opts.pins.map((p) => `${p.id}:${p.kind}`).join('|');
+    if (sig !== state.sig) {
+      state.sig = sig;
+      fit();
+    }
+    setTimeout(() => map.invalidateSize(), 60);
+    return true;
+  }
+
+  root.TripMap = { render, renderLocation };
 })(window);
