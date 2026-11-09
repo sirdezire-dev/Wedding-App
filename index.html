@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-  <link rel="stylesheet" href="css/styles.css?v=9" />
+  <link rel="stylesheet" href="css/styles.css?v=10" />
 </head>
 <body>
   <a class="skip-link" href="#step-home">Skip to trip planning</a>
@@ -100,8 +100,30 @@
             <label class="choice-btn"><input type="radio" name="together" value="no" /><span>No, it’s just my party</span></label>
           </fieldset>
           <div id="together-more" class="together-more" hidden>
-            <label class="field"><span>Who are you staying with?</span>
-              <input type="text" name="with" maxlength="200" placeholder="For example: the Jonas family, Aunt Rita" /></label>
+            <div class="group-pick">
+              <button type="button" class="group-toggle" data-action="toggle-groups" aria-expanded="true" aria-controls="group-panel">
+                <span class="gp-text"><span class="gp-title">Which group are you staying with?</span><span class="gp-current" id="gp-current"></span></span>
+                <span class="step-cue" id="gp-cue">Close</span>
+              </button>
+              <div id="group-panel" class="group-panel">
+                <p class="hint">Tap your group. If it isn’t here yet, start it, and the others in your group can then tap it.</p>
+                <div id="group-list" aria-live="polite"></div>
+                <button type="button" class="btn btn-new-group" data-action="toggle-new-group" aria-expanded="false" aria-controls="new-group">+ Start a new group</button>
+                <div id="new-group" class="new-group" hidden>
+                  <label class="field"><span>Name your group</span>
+                    <input type="text" id="new-group-name" maxlength="80" placeholder="For example: Jonas family house" /></label>
+                  <div class="btn-row tight">
+                    <button type="button" class="btn btn-primary" data-action="create-group">Create my group</button>
+                    <button type="button" class="btn btn-quiet" data-action="toggle-new-group">Cancel</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <details class="more">
+              <summary>Anyone else you’re staying with? (optional)</summary>
+              <label class="field"><span>Their names</span>
+                <input type="text" name="with" maxlength="200" placeholder="For example: Aunt Rita" /></label>
+            </details>
             <div class="field">
               <span id="lbl-group">How many people will be staying together in total (including you)?</span>
               <div class="stepper" role="group" aria-labelledby="lbl-group">
@@ -195,12 +217,12 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script src="data/wedding.js?v=9"></script>
-  <script src="data/airports.js?v=9"></script>
-  <script src="js/planner.js?v=9"></script>
-  <script src="js/travel.js?v=9"></script>
-  <script src="js/links.js?v=9"></script>
-  <script src="js/tripmap.js?v=9"></script>
-  <script src="js/app.js?v=9"></script>
+  <script src="data/wedding.js?v=10"></script>
+  <script src="data/airports.js?v=10"></script>
+  <script src="js/planner.js?v=10"></script>
+  <script src="js/travel.js?v=10"></script>
+  <script src="js/links.js?v=10"></script>
+  <script src="js/tripmap.js?v=10"></script>
+  <script src="js/app.js?v=10"></script>
 </body>
 </html>

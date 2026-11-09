@@ -36,7 +36,7 @@
     found: {}, // prices guests found online, by option id
     tierEdits: {}, // swaps made inside each budget package
     openSteps: [1], // which steps are open
-    guest: { id: '', names: '', together: '', with: '', sentAt: null },
+    guest: { id: '', names: '', together: '', with: '', sentAt: null, groupId: '', groupName: '', groupLocal: null, sentGroupId: '' },
     quickOpen: false,
     confirmed: { when: false, budget: false, extras: false },
     textSize: 'normal',
@@ -1146,13 +1146,140 @@
       `My travel plans for the wedding in ${W.venue.city}:`,
       state.guest.names.trim() ? `From: ${state.guest.names.trim()}` : null,
       `${niceDate(t.arrive, true)} to ${niceDate(t.depart, true)}, ${plural(t.travelers, 'person', 'people')}`,
-      state.guest.together === 'yes' ? `Staying with: ${state.guest.with.trim() || 'other guests'} (${trip().groupSize} people in total)` : state.guest.together === 'no' ? 'Not staying with other guests' : null,
+      state.guest.together === 'yes' ? `Staying with: ${[state.guest.groupName, state.guest.with.trim()].filter(Boolean).join(', ') || 'other guests'} (${trip().groupSize} people in total)` : state.guest.together === 'no' ? 'Not staying with other guests' : null,
       sel.travel ? `Getting there: ${travelTitle(sel.travel)} — ${travelLine(sel.travel)}` : null,
       sel.stay ? `Staying at: ${sel.stay.name}` : null,
       sel.ground ? `Getting around: ${groundTitle(sel.ground)}` : null,
       sel.activities.length ? `Things to do: ${sel.activities.map((a) => a.name).join(', ')}` : null,
       `Estimated total: ${fmt(c.total)}`,
     ].filter(Boolean).join('\n');
+  }
+
+  // ---------------------------------------------------------------- groups guests can join
+  let groups = []; // [{ id, name, people, parties, stay }] from the sheet
+  let groupsStatus = 'idle'; // idle | loading | ok | error | off
+  let groupsLoadedAt = 0;
+  let groupsOpen = !state.guest.groupId; // the "Which group?" panel
+  let newGroupOpen = false;
+
+  async function loadGroups(force = false) {
+    const endpoint = (W.responses && W.responses.endpoint) || '';
+    if (!endpoint) {
+      groupsStatus = 'off';
+      renderGroups();
+      return;
+    }
+    if (!force && groupsStatus === 'ok' && Date.now() - groupsLoadedAt < 60000) return;
+    groupsStatus = 'loading';
+    renderGroups();
+    try {
+      const res = await fetch(`${endpoint}?action=groups`);
+      const data = await res.json();
+      if (!data.ok) throw new Error('bad');
+      groups = (data.groups || []).filter((g) => g && g.id && g.name);
+      groupsStatus = 'ok';
+      groupsLoadedAt = Date.now();
+    } catch (e) {
+      groupsStatus = 'error';
+    }
+    renderGroups();
+  }
+
+  /** Groups from the sheet, plus one this guest just created that isn't saved yet. */
+  function allGroups() {
+    const list = [...groups];
+    const mine = state.guest.groupLocal;
+    if (mine && !list.some((g) => g.id === mine.id)) list.push({ id: mine.id, name: mine.name, people: 0, parties: 0, stay: '', local: true });
+    return list;
+  }
+
+  /** People already in a group, not counting this guest's own earlier answer. */
+  function othersIn(g) {
+    if (!g) return 0;
+    return Math.max(0, g.people - (state.guest.sentGroupId === g.id ? trip().travelers : 0));
+  }
+
+  function renderGroups() {
+    const g = state.guest;
+    const list = allGroups();
+    const chosen = list.find((x) => x.id === g.groupId) || (g.groupId ? { id: g.groupId, name: g.groupName, people: 0, stay: '' } : null);
+    $('#gp-current').textContent = chosen ? `Your group: ${chosen.name}` : '';
+    $('#group-panel').hidden = !groupsOpen;
+    $('.group-toggle').setAttribute('aria-expanded', String(groupsOpen));
+    $('#gp-cue').textContent = groupsOpen ? 'Close' : chosen ? 'Change' : 'Open';
+    $('#new-group').hidden = !newGroupOpen;
+    $('.btn-new-group').hidden = newGroupOpen;
+    $('.btn-new-group').setAttribute('aria-expanded', String(newGroupOpen));
+
+    let html = '';
+    if (groupsStatus === 'loading' && !list.length) html = '<p class="muted">Loading groups…</p>';
+    else if (groupsStatus === 'error') html = '<p class="notice warn">Couldn’t load the groups just now. <button type="button" class="link-btn" data-action="reload-groups">Try again</button></p>';
+    if (list.length) {
+      html += `<div class="group-opts">${list
+        .map((x) => {
+          const on = x.id === g.groupId;
+          const count = x.local ? 'New — others can join once you continue' : `${x.people} ${x.people === 1 ? 'person' : 'people'} so far${x.stay ? ` · staying at ${esc(x.stay)}` : ''}`;
+          return `<button type="button" class="group-opt" data-action="pick-group" data-id="${esc(x.id)}" aria-pressed="${on}">
+            <span class="go-name">${on ? '✓ ' : ''}${esc(x.name)}</span><span class="go-meta">${count}</span></button>`;
+        })
+        .join('')}</div>`;
+    } else if (groupsStatus !== 'loading' && groupsStatus !== 'error') {
+      html += '<p class="muted">No groups yet. Be the first: start one below.</p>';
+    }
+    if (chosen) html += `<button type="button" class="link-btn" data-action="leave-group">I’m not in a group</button>`;
+    $('#group-list').innerHTML = html;
+    renderSameStay(chosen);
+  }
+
+  /** Offer to choose the same place as the group, when they've picked one. */
+  function renderSameStay(chosen) {
+    let el = $('#same-stay');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'same-stay';
+      $('.group-pick').after(el);
+    }
+    const stay = chosen && chosen.stay ? allStays().find((x) => x.name === chosen.stay) : null;
+    const already = stay && state.selection.stayId === stay.id;
+    el.innerHTML = stay
+      ? already
+        ? `<p class="notice good">You’re staying at ${esc(stay.name)}, the same place as your group.</p>`
+        : `<div class="notice">Your group is staying at <b>${esc(stay.name)}</b>. <button type="button" class="btn btn-small btn-primary" data-action="same-stay" data-id="${esc(stay.id)}">Choose the same place</button></div>`
+      : '';
+  }
+
+  function pickGroup(id) {
+    const g = allGroups().find((x) => x.id === id);
+    if (!g) return;
+    state.guest.groupId = g.id;
+    state.guest.groupName = g.name;
+    const others = othersIn(g);
+    if (others + trip().travelers > Number(state.trip.groupSize)) state.trip.groupSize = others + trip().travelers;
+    groupsOpen = false;
+    newGroupOpen = false;
+    save();
+    renderAll();
+    toast(`You’re in the “${g.name}” group.`);
+  }
+
+  function createGroup() {
+    const input = $('#new-group-name');
+    const name = input.value.trim().replace(/\s+/g, ' ').slice(0, 80);
+    if (name.length < 2) {
+      toast('Please type a name for your group.');
+      input.focus();
+      return;
+    }
+    const same = allGroups().find((x) => x.name.toLowerCase() === name.toLowerCase());
+    if (same) {
+      input.value = '';
+      pickGroup(same.id);
+      return;
+    }
+    const id = uid('grp');
+    state.guest.groupLocal = { id, name };
+    input.value = '';
+    pickGroup(id);
   }
 
   // ---------------------------------------------------------------- send plans to the couple
@@ -1169,7 +1296,9 @@
       names: g.names.trim(),
       partySize: t.travelers,
       together: g.together === 'yes',
-      with: g.together === 'yes' ? g.with.trim() : '',
+      with: g.together === 'yes' ? [g.groupName, g.with.trim()].filter(Boolean).join(', ') : '',
+      groupId: g.together === 'yes' ? g.groupId : '',
+      groupName: g.together === 'yes' ? g.groupName : '',
       groupSize: g.together === 'yes' ? t.groupSize : t.travelers,
       stay: sel.stay ? sel.stay.name : '',
       stayType: sel.stay ? STAY_TYPES[sel.stay.type] : '',
@@ -1196,6 +1325,8 @@
       // text/plain keeps this a simple request that Google Apps Script accepts from any site.
       await fetch(ENDPOINT, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(plansPayload()) });
       state.guest.sentAt = Date.now();
+      state.guest.sentGroupId = state.guest.together === 'yes' ? state.guest.groupId : '';
+      groupsLoadedAt = 0; // the group list now includes this guest
       save();
       if (!quiet) toast(`Sent! ${W.couple} can now see your plans.`);
       renderMyTrip();
@@ -1210,7 +1341,7 @@
     const g = state.guest;
     const t = trip();
     const who = g.names.trim() || '<span class="fit bad">No name yet</span>';
-    const together = g.together === 'yes' ? `Staying with: ${esc(g.with || 'other guests')} (${plural(t.groupSize, 'person', 'people')} in total)` : g.together === 'no' ? 'Not staying with other guests' : '<span class="fit bad">Not answered yet</span>';
+    const together = g.together === 'yes' ? `Staying with: ${esc([g.groupName, g.with.trim()].filter(Boolean).join(', ') || 'other guests')} (${plural(t.groupSize, 'person', 'people')} in total)` : g.together === 'no' ? 'Not staying with other guests' : '<span class="fit bad">Not answered yet</span>';
     return `
       <div class="send-box">
         <h3 class="sub-h">Let ${esc(W.couple)} know your plans</h3>
@@ -1296,6 +1427,7 @@
         // Just my party: no cost splitting. Sharing: make sure the group is bigger than the party.
         if (value === 'no') state.trip.groupSize = state.trip.travelers;
         if (value === 'yes' && Number(state.trip.groupSize) <= Number(state.trip.travelers)) state.trip.groupSize = Number(state.trip.travelers) + 2;
+        if (value === 'yes') loadGroups();
         save();
         renderAll();
         return;
@@ -1304,6 +1436,12 @@
       renderSteps();
     });
     $('#guest-form').addEventListener('submit', (e) => e.preventDefault());
+    $('#new-group-name').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        createGroup();
+      }
+    });
 
     $('#when-form').addEventListener('input', (e) => {
       if (!['arrive', 'depart'].includes(e.target.name)) return;
@@ -1485,6 +1623,38 @@
         toast(`${rec.name} chosen.`);
         break;
       }
+      case 'toggle-groups':
+        groupsOpen = !groupsOpen;
+        if (groupsOpen) loadGroups();
+        renderGroups();
+        return;
+      case 'toggle-new-group':
+        newGroupOpen = !newGroupOpen;
+        renderGroups();
+        if (newGroupOpen) $('#new-group-name').focus();
+        return;
+      case 'create-group':
+        createGroup();
+        return;
+      case 'pick-group':
+        pickGroup(id);
+        return;
+      case 'leave-group':
+        state.guest.groupId = '';
+        state.guest.groupName = '';
+        groupsOpen = true;
+        save();
+        renderAll();
+        return;
+      case 'reload-groups':
+        loadGroups(true);
+        return;
+      case 'same-stay':
+        state.selection.stayId = id;
+        save();
+        renderAll();
+        toast('Done — you’re staying at the same place as your group.');
+        return;
       case 'send-plans':
         sendPlans();
         return;
@@ -1652,7 +1822,7 @@
     if (n === 2) {
       const g = state.guest;
       const who = g.names.trim() ? `${g.names.trim()} · ` : '';
-      const share = g.together === 'yes' ? ` · staying with ${g.with.trim() || 'other guests'}` : g.together === 'no' ? ' · just your party' : '';
+      const share = g.together === 'yes' ? ` · staying with ${g.groupName || g.with.trim() || 'other guests'}` : g.together === 'no' ? ' · just your party' : '';
       return `${who}${niceDate(t.arrive)} to ${niceDate(t.depart)} · ${plural(t.travelers, 'person', 'people')}${share}`;
     }
     if (n === 3) {
@@ -1768,6 +1938,7 @@
   // ---------------------------------------------------------------- boot
   function renderAll() {
     renderSteps();
+    renderGroups();
     renderQuick();
     renderHome();
     renderWhen();
@@ -1807,6 +1978,7 @@
   applyTextSize();
   applyCurrency();
   loadRate();
+  if (state.guest.together === 'yes') loadGroups();
   fillForms();
   wireForms();
   renderAll();

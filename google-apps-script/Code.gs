@@ -11,7 +11,7 @@ const SHEET_NAME = 'Guest answers';
 const HEADERS = [
   'Guest ID', 'Last updated', 'Names', 'Party size', 'Staying with other guests?', 'Staying with',
   'People staying together', 'Place to stay', 'Type of place', 'Arrive', 'Leave',
-  'Getting there', 'Arrival airport', 'Car or shuttle', 'Booked so far',
+  'Getting there', 'Arrival airport', 'Car or shuttle', 'Booked so far', 'Group ID', 'Group name',
 ];
 
 function sheet_() {
@@ -50,6 +50,7 @@ function doPost(e) {
       clean_(d.id, 60), new Date(), clean_(d.names), Number(d.partySize) || 1, d.together ? 'Yes' : 'No',
       clean_(d.with), Number(d.groupSize) || Number(d.partySize) || 1, clean_(d.stay), clean_(d.stayType, 40),
       clean_(d.arrive, 10), clean_(d.depart, 10), clean_(d.travel), clean_(d.airport, 20), clean_(d.car), clean_(d.booked),
+      clean_(d.groupId, 60), clean_(d.groupName, 80),
     ];
     const sh = sheet_();
     const n = sh.getLastRow() - 1;
@@ -67,6 +68,8 @@ function doPost(e) {
 
 /** The couple's page reads the answers here — only with the passcode. */
 function doGet(e) {
+  // Guests can see the list of groups (name, head count, place) so they can join one. No personal details.
+  if (e && e.parameter && e.parameter.action === 'groups') return json_({ ok: true, groups: groups_() });
   if (!e || !e.parameter || e.parameter.key !== PASSCODE) return json_({ ok: false, error: 'wrong passcode' });
   const values = sheet_().getDataRange().getValues();
   const headers = values.shift();
@@ -76,4 +79,27 @@ function doGet(e) {
     return o;
   });
   return json_({ ok: true, rows: rows });
+}
+
+/** Groups guests have created: id, name, how many people so far, and where they're staying. */
+function groups_() {
+  const values = sheet_().getDataRange().getValues();
+  const headers = values.shift() || [];
+  const col = (name) => headers.indexOf(name);
+  const gId = col('Group ID'), gName = col('Group name'), size = col('Party size'), stay = col('Place to stay');
+  if (gId < 0) return [];
+  const byId = {};
+  values.forEach((r) => {
+    const id = r[gId];
+    if (!id) return;
+    const g = byId[id] || (byId[id] = { id: String(id), name: String(r[gName] || 'Group'), people: 0, parties: 0, stays: {} });
+    g.people += Number(r[size]) || 1;
+    g.parties += 1;
+    if (r[stay]) g.stays[r[stay]] = (g.stays[r[stay]] || 0) + 1;
+  });
+  return Object.keys(byId).map((k) => {
+    const g = byId[k];
+    const stays = Object.keys(g.stays).sort((a, b) => g.stays[b] - g.stays[a]);
+    return { id: g.id, name: g.name, people: g.people, parties: g.parties, stay: stays[0] || '' };
+  }).sort((a, b) => a.name.localeCompare(b.name));
 }

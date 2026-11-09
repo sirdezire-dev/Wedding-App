@@ -20,10 +20,10 @@
 
   // ---------------------------------------------------------------- example data
   const EXAMPLE = [
-    { 'Guest ID': 'g1', Names: 'Linda and Tom Smith', 'Party size': 2, 'Staying with other guests?': 'Yes', 'Staying with': 'the Jonas family', 'People staying together': 6, 'Place to stay': '4-bedroom home with hot tub', 'Type of place': 'Vacation home', Arrive: '2027-05-26', Leave: '2027-05-30', 'Arrival airport': 'SLC' },
-    { 'Guest ID': 'g2', Names: 'Mark, Ruta and Ema Jonas', 'Party size': 3, 'Staying with other guests?': 'Yes', 'Staying with': 'Linda & Tom Smith, Aunt Rita', 'People staying together': 6, 'Place to stay': '4-bedroom home with hot tub', 'Type of place': 'Vacation home', Arrive: '2027-05-26', Leave: '2027-05-30', 'Arrival airport': 'SLC' },
-    { 'Guest ID': 'g3', Names: 'Paulius Kazlauskas', 'Party size': 1, 'Staying with other guests?': 'Yes', 'Staying with': 'Sophie', 'People staying together': 2, 'Place to stay': 'Hyatt Place Moab', 'Type of place': 'Hotel', Arrive: '2027-05-27', Leave: '2027-05-30', 'Arrival airport': 'CNY' },
-    { 'Guest ID': 'g4', Names: 'Sophie Turner', 'Party size': 1, 'Staying with other guests?': 'Yes', 'Staying with': 'Paulius', 'People staying together': 2, 'Place to stay': 'Hampton Inn Moab', 'Type of place': 'Hotel', Arrive: '2027-05-27', Leave: '2027-05-29', 'Arrival airport': 'GJT' },
+    { 'Guest ID': 'g1', Names: 'Linda and Tom Smith', 'Party size': 2, 'Staying with other guests?': 'Yes', 'Staying with': 'Jonas family house', 'Group ID': 'grp-jonas', 'Group name': 'Jonas family house', 'People staying together': 6, 'Place to stay': '4-bedroom home with hot tub', 'Type of place': 'Vacation home', Arrive: '2027-05-26', Leave: '2027-05-30', 'Arrival airport': 'SLC' },
+    { 'Guest ID': 'g2', Names: 'Mark, Ruta and Ema Jonas', 'Party size': 3, 'Staying with other guests?': 'Yes', 'Staying with': 'Jonas family house, Aunt Rita', 'Group ID': 'grp-jonas', 'Group name': 'Jonas family house', 'People staying together': 6, 'Place to stay': '4-bedroom home with hot tub', 'Type of place': 'Vacation home', Arrive: '2027-05-26', Leave: '2027-05-30', 'Arrival airport': 'SLC' },
+    { 'Guest ID': 'g3', Names: 'Paulius Kazlauskas', 'Party size': 1, 'Staying with other guests?': 'Yes', 'Staying with': 'Paulius & Sophie', 'Group ID': 'grp-ps', 'Group name': 'Paulius & Sophie', 'People staying together': 2, 'Place to stay': 'Hyatt Place Moab', 'Type of place': 'Hotel', Arrive: '2027-05-27', Leave: '2027-05-30', 'Arrival airport': 'CNY' },
+    { 'Guest ID': 'g4', Names: 'Sophie Turner', 'Party size': 1, 'Staying with other guests?': 'Yes', 'Staying with': 'Paulius & Sophie', 'Group ID': 'grp-ps', 'Group name': 'Paulius & Sophie', 'People staying together': 2, 'Place to stay': 'Hampton Inn Moab', 'Type of place': 'Hotel', Arrive: '2027-05-27', Leave: '2027-05-29', 'Arrival airport': 'GJT' },
     { 'Guest ID': 'g5', Names: 'Grandma Ona', 'Party size': 1, 'Staying with other guests?': 'No', 'Staying with': '', 'People staying together': 1, 'Place to stay': 'Hyatt Place Moab', 'Type of place': 'Hotel', Arrive: '2027-05-26', Leave: '2027-05-30', 'Arrival airport': 'CNY' },
     { 'Guest ID': 'g6', Names: 'Chris and Dana Lee', 'Party size': 2, 'Staying with other guests?': 'No', 'Staying with': '', 'People staying together': 2, 'Place to stay': '', 'Type of place': '', Arrive: '2027-05-27', Leave: '2027-05-30', 'Arrival airport': 'Driving' },
   ];
@@ -55,6 +55,8 @@
       depart: r.Leave,
       airport: r['Arrival airport'] || '',
       updated: r['Last updated'] || '',
+      groupId: String(r['Group ID'] || ''),
+      groupName: String(r['Group name'] || ''),
       people: people(r.Names),
     };
   }
@@ -78,12 +80,15 @@
     const unknown = list.map(() => []);
     list.forEach((p, i) => {
       if (!p.together) return;
-      mentions(p.with).forEach((m) => {
+      const own = norm(p.groupName);
+      mentions(p.with).filter((m) => m !== own).forEach((m) => {
         const hits = list.map((q, j) => (j !== i && matches(m, q) ? j : -1)).filter((j) => j >= 0);
         if (hits.length) hits.forEach((j) => join(i, j));
         else unknown[i].push(m);
       });
     });
+    // Guests who tapped the same group are together.
+    list.forEach((p, i) => list.forEach((q, j) => { if (j > i && p.groupId && p.groupId === q.groupId) join(i, j); }));
     // Two "sharing" parties in the same vacation home or Airbnb are almost certainly together.
     list.forEach((p, i) =>
       list.forEach((q, j) => {
@@ -102,7 +107,7 @@
     return `<li class="cp-party">
       <div class="cp-party-head"><b>${esc(p.names)}</b><span class="tag">${plural(p.size, 'person', 'people')}</span></div>
       <div class="muted">${p.stay ? esc(p.stay) : '<span class="fit bad">No place to stay chosen yet</span>'} · ${day(p.arrive)} – ${day(p.depart)}${p.airport ? ` · ${esc(p.airport === 'Driving' ? 'driving' : `flying into ${p.airport}`)}` : ''}</div>
-      ${showWith && p.together ? `<div>Says they’re staying with: <i>${esc(p.with || '—')}</i></div>` : ''}
+      ${showWith && p.together ? `<div>${p.groupName ? `Group: <b>${esc(p.groupName)}</b>` : ''}${p.groupName && p.with && p.with !== p.groupName ? ' · ' : ''}${p.with && p.with !== p.groupName ? `Says they’re staying with: <i>${esc(p.with)}</i>` : ''}${!p.groupName && !p.with ? 'Staying with: —' : ''}</div>` : ''}
     </li>`;
   }
 
@@ -135,7 +140,7 @@
       if (claimed > total) warn.push(`They expect ${claimed} people, but only ${total} have answered so far.`);
       return `<article class="cp-group">
         <header class="cp-group-head">
-          <h3>Group ${i + 1}: ${plural(total, 'person', 'people')}</h3>
+          <h3>${(() => { const names = [...new Set(g.map((p) => p.groupName).filter(Boolean))]; return names.length ? esc(names.join(' + ')) : `Group ${i + 1}`; })()}: ${plural(total, 'person', 'people')}</h3>
           <p class="muted">${stays.length === 1 ? `Staying at <b>${esc(stays[0])}</b>` : stays.length ? 'Different places' : 'No place chosen yet'}</p>
         </header>
         <ul class="cp-list">${g.map((p) => partyLine(p)).join('')}</ul>
@@ -172,9 +177,9 @@
     const list = parties.filter(filterOn);
     if (!list.length) return '<p class="muted">No answers match.</p>';
     return `<div class="table-wrap"><table class="compare cp-table">
-      <thead><tr><th>Names</th><th>People</th><th>Sharing?</th><th>Staying with</th><th>Place to stay</th><th>Dates</th><th>Arriving</th></tr></thead>
+      <thead><tr><th>Names</th><th>People</th><th>Sharing?</th><th>Group</th><th>Staying with</th><th>Place to stay</th><th>Dates</th><th>Arriving</th></tr></thead>
       <tbody>${list
-        .map((p) => `<tr><td><b>${esc(p.names)}</b></td><td>${p.size}</td><td>${p.together ? 'Yes' : 'No'}</td><td>${esc(p.with || '—')}</td><td>${esc(p.stay || '—')}</td><td>${day(p.arrive)} – ${day(p.depart)}</td><td>${esc(p.airport || '—')}</td></tr>`)
+        .map((p) => `<tr><td><b>${esc(p.names)}</b></td><td>${p.size}</td><td>${p.together ? 'Yes' : 'No'}</td><td>${esc(p.groupName || '—')}</td><td>${esc(p.with || '—')}</td><td>${esc(p.stay || '—')}</td><td>${day(p.arrive)} – ${day(p.depart)}</td><td>${esc(p.airport || '—')}</td></tr>`)
         .join('')}</tbody></table></div>`;
   }
 
