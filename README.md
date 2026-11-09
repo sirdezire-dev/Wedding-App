@@ -23,7 +23,7 @@ A bar at the bottom of the screen always shows the trip total and how much budge
 
 In step 2, each guest gives their name(s) and answers **"Will you be staying with other wedding guests?"** If they say yes, a **"Which family are you staying with?"** panel opens. Family buttons stay on screen and show the most recently active families first (with "Show all" to open the full list). They tap a family someone has already created (shown by the names of the people who created it, how many people are in it, and where they're staying), or tap **"+ Create a family: <their names>"**: one tap, using the names they already typed. Others can then tap it. If the group has chosen a place, they're offered **"Choose the same place"**. They also say how many people in total (this splits the cost of the house and car). Other guests only ever see group names, head counts and places. When they continue, and again from their summary, their answers are sent to your **Google Sheet**: names, who they're staying with, where, dates and arrival airport. Their address and budget are never sent.
 
-Open **couple.html** (there's a link at the bottom of the site) and enter your passcode to see:
+Open **couple.html** (not linked from the guest site; bookmark it). If you set a passcode in the sheet's script it asks for it; with no passcode it opens straight away. It shows:
 - **Staying together:** groups of guests who named each other, people who were named but haven't answered yet, and warnings when a group picked different places
 - **By place to stay:** who's at each hotel or house
 - **Everyone:** a full table, with search and print

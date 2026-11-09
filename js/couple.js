@@ -216,15 +216,21 @@
     render();
   }
 
-  async function signIn(pass) {
+  async function signIn(pass, { quiet = false } = {}) {
     const msg = $('#cp-login-msg');
-    msg.innerHTML = '<p class="muted">Loading…</p>';
+    msg.innerHTML = quiet ? '' : '<p class="muted">Loading…</p>';
     try {
       const rows = await load(pass);
       try { sessionStorage.setItem(KEY, pass); } catch (e) { /* private mode */ }
       msg.innerHTML = '';
       showApp(rows, false);
+      $('#cp-signout').hidden = !pass; // nothing to sign out of without a passcode
     } catch (e) {
+      if (quiet && /passcode/.test(e.message)) {
+        $('#cp-login').hidden = false;
+        $('#cp-app').hidden = true;
+        return;
+      }
       msg.innerHTML = /passcode/.test(e.message)
         ? '<p class="notice warn">That passcode didn’t work. Check the PASSCODE line in your Google Sheet’s script.</p>'
         : '<p class="notice warn">Couldn’t reach your Google Sheet. Check your internet connection, and that the script is deployed with access for “Anyone”.</p>';
@@ -269,8 +275,8 @@
   } else {
     let saved = '';
     try { saved = sessionStorage.getItem(KEY) || ''; } catch (e) { /* ignore */ }
-    if (saved) signIn(saved);
-    else $('#cp-login').hidden = false;
+    // No passcode set in the sheet's script? Then this opens straight away.
+    signIn(saved, { quiet: true });
   }
 
   // For tests

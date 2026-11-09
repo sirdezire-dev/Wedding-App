@@ -4,8 +4,9 @@
  * See SETUP.md in this folder for the 5-minute setup.
  */
 
-// Choose a passcode for the couple's "Who's staying with who" page. Keep it private.
-const PASSCODE = 'CHANGE-THIS-PASSCODE';
+// Optional: a passcode for the couple's "Who's staying with who" page.
+// Leave it as '' for no passcode. To add one, type it between the quote marks, e.g. 'MoabMay2027'.
+const PASSCODE = '';
 
 const SHEET_NAME = 'Guest answers';
 const HEADERS = [
@@ -78,7 +79,7 @@ function doPost(e) {
 function doGet(e) {
   // Guests can see the list of groups (name, head count, place) so they can join one. No personal details.
   if (e && e.parameter && e.parameter.action === 'groups') return json_({ ok: true, groups: groups_() });
-  if (!e || !e.parameter || e.parameter.key !== PASSCODE) return json_({ ok: false, error: 'wrong passcode' });
+  if (PASSCODE && (!e || !e.parameter || e.parameter.key !== PASSCODE)) return json_({ ok: false, error: 'wrong passcode' });
   const values = sheet_().getDataRange().getValues();
   const headers = values.shift();
   const rows = values.map((r) => {

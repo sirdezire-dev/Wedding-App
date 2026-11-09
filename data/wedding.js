@@ -32,7 +32,7 @@
     // Where guests' answers are saved (who they're staying with, where, when).
     // Paste your Google Apps Script web-app address here — see google-apps-script/SETUP.md.
     responses: {
-      endpoint: 'https://script.google.com/macros/s/AKfycbxvg3CAdkFRMzFqIjL6f6zW7rz-7zEIBayFcSoZpXz5jvjSCWddId2vm-KYReoZ_torRA/exec', // the Google Sheet's script (Deploy → Web app URL)
+      endpoint: 'https://script.google.com/macros/s/AKfycby7M1mSyxJHb9MB3GwZgk8RyWkt1W535zcQqBcvvkWyQjK9jNz1xWD1-8czVjQSaYf3Yg/exec', // the Google Sheet's script (Deploy → Web app URL)
       sheetUrl: 'https://docs.google.com/spreadsheets/d/1MHg4Br30pPgHFvzlk7lh_hBgT_3V_-1bM6fDpex-L5I/edit', // your Google Sheet (private to you)
     },
 
