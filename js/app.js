@@ -36,6 +36,7 @@
     found: {}, // prices guests found online, by option id
     tierEdits: {}, // swaps made inside each budget package
     openSteps: [1], // which steps are open
+    guest: { id: '', names: '', together: '', with: '', sentAt: null },
     quickOpen: false,
     confirmed: { when: false, budget: false, extras: false },
     textSize: 'normal',
@@ -60,6 +61,7 @@
         found: { ...d.found, ...raw.found },
         tierEdits: { ...d.tierEdits, ...raw.tierEdits },
         confirmed: { ...d.confirmed, ...raw.confirmed },
+        guest: { ...d.guest, ...raw.guest },
         openSteps: Array.isArray(raw.openSteps) ? raw.openSteps : raw.openStep ? [raw.openStep] : d.openSteps,
       };
     } catch (e) {
@@ -949,7 +951,7 @@
     const any = sel.travel || sel.stay || sel.ground || sel.activities.length;
 
     if (!any) {
-      el.innerHTML = `<div class="empty">Nothing chosen yet. Choose a package in <button type="button" class="link-btn" data-open-step="4">step 4</button>, or pick each part in <button type="button" class="link-btn" data-open-step="5">step 5</button>. Everything you choose will be listed here with a button to book it.</div>`;
+      el.innerHTML = `<div class="empty">Nothing chosen yet. Choose a package in <button type="button" class="link-btn" data-open-step="4">step 4</button>, or pick each part in <button type="button" class="link-btn" data-open-step="5">step 5</button>. Everything you choose will be listed here with a button to book it.</div>${sendBlock()}`;
       return;
     }
 
@@ -1005,6 +1007,8 @@
           <li><span class="when">${niceDate(t.depart, true)}</span><span>Head home</span></li>
         </ul>
       </details>
+
+      ${sendBlock()}
 
       <div class="btn-row">
         <button type="button" class="btn" data-action="print">Print my summary</button>
@@ -1089,13 +1093,86 @@
     const c = P.costBreakdown(sel, t);
     return [
       `My travel plans for the wedding in ${W.venue.city}:`,
+      state.guest.names.trim() ? `From: ${state.guest.names.trim()}` : null,
       `${niceDate(t.arrive, true)} to ${niceDate(t.depart, true)}, ${plural(t.travelers, 'person', 'people')}`,
+      state.guest.together === 'yes' ? `Staying with: ${state.guest.with.trim() || 'other guests'} (${trip().groupSize} people in total)` : state.guest.together === 'no' ? 'Not staying with other guests' : null,
       sel.travel ? `Getting there: ${travelTitle(sel.travel)} — ${travelLine(sel.travel)}` : null,
       sel.stay ? `Staying at: ${sel.stay.name}` : null,
       sel.ground ? `Getting around: ${groundTitle(sel.ground)}` : null,
       sel.activities.length ? `Things to do: ${sel.activities.map((a) => a.name).join(', ')}` : null,
       `Estimated total: ${fmt(c.total)}`,
     ].filter(Boolean).join('\n');
+  }
+
+  // ---------------------------------------------------------------- send plans to the couple
+  const ENDPOINT = (W.responses && W.responses.endpoint) || '';
+
+  function plansPayload() {
+    const t = trip();
+    const sel = selected();
+    const g = state.guest;
+    if (!g.id) g.id = uid('guest');
+    const booked = [['travel', 'travel'], ['stay', 'place to stay'], ['ground', 'car']].filter(([k]) => state.booked[k]).map(([, l]) => l);
+    return {
+      id: g.id,
+      names: g.names.trim(),
+      partySize: t.travelers,
+      together: g.together === 'yes',
+      with: g.together === 'yes' ? g.with.trim() : '',
+      groupSize: g.together === 'yes' ? t.groupSize : t.travelers,
+      stay: sel.stay ? sel.stay.name : '',
+      stayType: sel.stay ? STAY_TYPES[sel.stay.type] : '',
+      arrive: t.arrive,
+      depart: t.depart,
+      travel: sel.travel ? `${travelTitle(sel.travel)} — ${travelLine(sel.travel)}` : '',
+      airport: sel.travel && sel.travel.kind === 'flight' ? sel.travel.to : sel.travel ? 'Driving' : '',
+      car: sel.ground ? groundTitle(sel.ground) : '',
+      booked: booked.join(', '),
+    };
+  }
+
+  /** Send (or update) this guest's answers in the couple's Google Sheet. */
+  async function sendPlans({ quiet = false } = {}) {
+    if (!ENDPOINT) return false;
+    if (!state.guest.names.trim()) {
+      if (!quiet) {
+        toast('Please add your name in step 2 first.');
+        openStep(2);
+      }
+      return false;
+    }
+    try {
+      // text/plain keeps this a simple request that Google Apps Script accepts from any site.
+      await fetch(ENDPOINT, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(plansPayload()) });
+      state.guest.sentAt = Date.now();
+      save();
+      if (!quiet) toast(`Sent! ${W.couple} can now see your plans.`);
+      renderMyTrip();
+      return true;
+    } catch (e) {
+      if (!quiet) toast('Couldn’t send just now. Check your internet connection and try again.');
+      return false;
+    }
+  }
+
+  function sendBlock() {
+    const g = state.guest;
+    const t = trip();
+    const who = g.names.trim() || '<span class="fit bad">No name yet</span>';
+    const together = g.together === 'yes' ? `Staying with: ${esc(g.with || 'other guests')} (${plural(t.groupSize, 'person', 'people')} in total)` : g.together === 'no' ? 'Not staying with other guests' : '<span class="fit bad">Not answered yet</span>';
+    return `
+      <div class="send-box">
+        <h3 class="sub-h">Let ${esc(W.couple)} know your plans</h3>
+        <ul class="plain-list">
+          <li><b>Who:</b> ${g.names.trim() ? esc(who) : who}</li>
+          <li><b>Staying together:</b> ${together}</li>
+        </ul>
+        <p class="muted">${g.names.trim() && g.together ? '' : '<button type="button" class="link-btn" data-open-step="2">Add these in step 2</button>. '}They’ll also see your dates, where you’re staying and how you’re getting there — not your address or budget.</p>
+        ${ENDPOINT
+          ? `<div class="btn-row"><button type="button" class="btn btn-primary" data-action="send-plans">${g.sentAt ? 'Send my updated plans' : 'Send my plans to the couple'}</button></div>
+             ${g.sentAt ? `<p class="fit good">Sent ✓ ${new Date(g.sentAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}. Send again if anything changes.</p>` : ''}`
+          : `<div class="btn-row"><button type="button" class="btn btn-primary" data-action="copy">Copy my plans to send to the couple</button></div>`}
+      </div>`;
   }
 
   // ---------------------------------------------------------------- trip bar
@@ -1131,7 +1208,11 @@
     bf['cap-travel'].value = state.caps.travel;
     bf['cap-stay'].value = state.caps.stay;
     bf['cap-ground'].value = state.caps.ground;
-    if (Number(t.groupSize) > Number(t.travelers)) $('#sharing').open = true;
+    const gf = $('#guest-form');
+    gf.names.value = state.guest.names;
+    gf.with.value = state.guest.with;
+    gf.querySelectorAll('input[name="together"]').forEach((r) => (r.checked = r.value === state.guest.together));
+    $('#together-more').hidden = state.guest.together !== 'yes';
   }
 
   function wireForms() {
@@ -1152,6 +1233,26 @@
         { timeout: 10000 }
       );
     });
+
+    $('#guest-form').addEventListener('input', (e) => {
+      const { name, value } = e.target;
+      const g = state.guest;
+      if (name === 'names') g.names = value.slice(0, 200);
+      else if (name === 'with') g.with = value.slice(0, 200);
+      else if (name === 'together') {
+        g.together = value;
+        $('#together-more').hidden = value !== 'yes';
+        // Just my party: no cost splitting. Sharing: make sure the group is bigger than the party.
+        if (value === 'no') state.trip.groupSize = state.trip.travelers;
+        if (value === 'yes' && Number(state.trip.groupSize) <= Number(state.trip.travelers)) state.trip.groupSize = Number(state.trip.travelers) + 2;
+        save();
+        renderAll();
+        return;
+      } else return;
+      save();
+      renderSteps();
+    });
+    $('#guest-form').addEventListener('submit', (e) => e.preventDefault());
 
     $('#when-form').addEventListener('input', (e) => {
       if (!['arrive', 'depart'].includes(e.target.name)) return;
@@ -1233,7 +1334,7 @@
       const key = stepper.dataset.stepper;
       const t = state.trip;
       t[key] = Math.min(30, Math.max(1, (Number(t[key]) || 1) + Number(stepper.dataset.delta)));
-      if (key === 'travelers' && Number(t.groupSize) < t.travelers) t.groupSize = t.travelers;
+      if (key === 'travelers' && (Number(t.groupSize) < t.travelers || state.guest.together === 'no')) t.groupSize = t.travelers;
       if (key === 'groupSize' && t.groupSize < Number(t.travelers)) t.groupSize = Number(t.travelers);
       save();
       renderAll();
@@ -1323,6 +1424,9 @@
         toast(`${rec.name} chosen.`);
         break;
       }
+      case 'send-plans':
+        sendPlans();
+        return;
       case 'map-all':
       case 'map-local': {
         const m = document.getElementById(btn.dataset.map);
@@ -1484,7 +1588,12 @@
       const place = state.home ? state.home.label.split(',').slice(0, 2).join(',') : 'Chosen airport';
       return `${place}${state.origins.length ? ` · flying from ${state.origins.join(', ')}` : ''}`;
     }
-    if (n === 2) return `${niceDate(t.arrive)} to ${niceDate(t.depart)} · ${plural(t.travelers, 'person', 'people')}${t.groupSize > t.travelers ? `, sharing with ${t.groupSize - t.travelers} more` : ''}`;
+    if (n === 2) {
+      const g = state.guest;
+      const who = g.names.trim() ? `${g.names.trim()} · ` : '';
+      const share = g.together === 'yes' ? ` · staying with ${g.with.trim() || 'other guests'}` : g.together === 'no' ? ' · just your party' : '';
+      return `${who}${niceDate(t.arrive)} to ${niceDate(t.depart)} · ${plural(t.travelers, 'person', 'people')}${share}`;
+    }
     if (n === 3) {
       if (b.total == null) return 'No budget set, so we’ll show everything';
       const caps = [['travel', 'flights'], ['stay', 'stay'], ['ground', 'car']].filter(([k]) => b.caps[k] != null).map(([k, l]) => `${l} up to ${fmt(b.caps[k])}`);
@@ -1585,6 +1694,7 @@
   }
 
   function nextStep(n) {
+    if ((n === 2 || n === 5) && state.guest.names.trim()) sendPlans({ quiet: true });
     if (n === 2) state.confirmed.when = true;
     if (n === 3) state.confirmed.budget = true;
     if (n === 5) state.confirmed.extras = true;

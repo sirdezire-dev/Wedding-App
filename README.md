@@ -19,6 +19,17 @@ The page is a guided series of sections that open one at a time. Each section is
 
 A bar at the bottom of the screen always shows the trip total and how much budget is left. Everything is saved on the guest's own device.
 
+## Who's staying with who (for the couple)
+
+In step 2, each guest gives their name(s) and answers **"Will you be staying with other wedding guests?"** If they say yes, they're asked who with and how many people in total (this also splits the cost of the house and car). When they continue, and again from their summary, their answers are sent to your **Google Sheet**: names, who they're staying with, where, dates and arrival airport. Their address and budget are never sent.
+
+Open **couple.html** (there's a link at the bottom of the site) and enter your passcode to see:
+- **Staying together:** groups of guests who named each other, people who were named but haven't answered yet, and warnings when a group picked different places
+- **By place to stay:** who's at each hotel or house
+- **Everyone:** a full table, with search and print
+
+Until the sheet is connected, couple.html shows example answers. To connect it, follow [`google-apps-script/SETUP.md`](google-apps-script/SETUP.md) (about 5 minutes), then put the web-app URL in `data/wedding.js` → `responses.endpoint`.
+
 ## About the prices
 
 The flight fares and travel times are **estimates**, worked out from distance, number of stops and airport. Hotel, car and activity prices are typical late-May prices set in `data/wedding.js`. Guests always see the real price on the booking site before they pay. Address search and maps use the free OpenStreetMap service (maps are drawn with Leaflet). If that service doesn't respond, guests can pick their nearest airport instead.

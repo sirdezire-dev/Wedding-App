@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Who’s staying with who · Deividas &amp; Gina</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css?v=7" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%239a4a2c'/%3E%3Ctext x='32' y='42' font-size='28' text-anchor='middle' fill='white' font-family='Georgia'%3ED%26G%3C/text%3E%3C/svg%3E" />
+</head>
+<body class="couple-page">
+  <header class="hero hero-small">
+    <p class="eyebrow">Just for the two of you</p>
+    <h1>Who’s staying with who</h1>
+    <p class="hero-venue" id="cp-sub"></p>
+    <p><a href="index.html">← Back to the travel planner</a></p>
+  </header>
+
+  <main>
+    <section class="step cp-card" id="cp-login" hidden>
+      <div class="step-body cp-pad">
+        <h2 class="sub-h">Enter your passcode</h2>
+        <p>This is the passcode you set in your Google Sheet’s script.</p>
+        <form id="cp-login-form" class="search-row">
+          <label for="cp-pass" class="sr-only">Passcode</label>
+          <input id="cp-pass" type="password" autocomplete="current-password" placeholder="Passcode" />
+          <button class="btn btn-primary" type="submit">Show answers</button>
+        </form>
+        <div id="cp-login-msg" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <div id="cp-app" hidden>
+      <div id="cp-banner"></div>
+      <div class="cp-tools">
+        <label class="field cp-search"><span>Find a guest</span><input type="text" id="cp-search" placeholder="Type a name" /></label>
+        <div class="btn-row">
+          <button type="button" class="btn" id="cp-refresh">Refresh</button>
+          <button type="button" class="btn" id="cp-print">Print</button>
+          <a class="btn" id="cp-sheet" target="_blank" rel="noopener" hidden>Open the Google Sheet ↗</a>
+          <button type="button" class="btn btn-quiet" id="cp-signout">Sign out</button>
+        </div>
+      </div>
+      <div class="cp-stats" id="cp-stats"></div>
+      <div class="tabs cp-tabs" role="tablist" id="cp-tabs">
+        <button role="tab" data-cp-tab="together" aria-selected="true">Staying together</button>
+        <button role="tab" data-cp-tab="places" aria-selected="false">By place to stay</button>
+        <button role="tab" data-cp-tab="all" aria-selected="false">Everyone</button>
+      </div>
+      <div id="cp-view" role="tabpanel"></div>
+    </div>
+  </main>
+
+  <footer class="footer"><p>Answers come from your Google Sheet. Guests can send again to update their answers.</p></footer>
+
+  <script src="data/wedding.js?v=7"></script>
+  <script src="js/couple.js?v=7"></script>
+</body>
+</html>

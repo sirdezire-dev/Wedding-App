@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-  <link rel="stylesheet" href="css/styles.css?v=6" />
+  <link rel="stylesheet" href="css/styles.css?v=7" />
 </head>
 <body>
   <a class="skip-link" href="#step-home">Skip to trip planning</a>
@@ -84,18 +84,29 @@
             </div>
           </div>
         </form>
-        <details class="more" id="sharing">
-          <summary>Sharing a house, room or car with other guests?</summary>
-          <p>Tell us how many people are in your whole group, and we’ll split the cost of the place to stay and the car fairly, by person.</p>
-          <div class="field">
-            <span id="lbl-group">People in the whole group (including you)</span>
-            <div class="stepper" role="group" aria-labelledby="lbl-group">
-              <button type="button" data-stepper="groupSize" data-delta="-1" aria-label="One fewer person in the group">−</button>
-              <output id="out-groupSize" aria-live="polite"></output>
-              <button type="button" data-stepper="groupSize" data-delta="1" aria-label="One more person in the group">+</button>
+        <form id="guest-form" class="guest-form" autocomplete="on">
+          <label class="field field-names"><span>Your name, and the names of anyone coming with you</span>
+            <input type="text" name="names" autocomplete="name" maxlength="200" placeholder="For example: Linda and Tom Smith" /></label>
+          <fieldset class="choice">
+            <legend>Will you be staying with other wedding guests?</legend>
+            <label class="choice-btn"><input type="radio" name="together" value="yes" /><span>Yes, we’re sharing a place with other guests</span></label>
+            <label class="choice-btn"><input type="radio" name="together" value="no" /><span>No, it’s just my party</span></label>
+          </fieldset>
+          <div id="together-more" class="together-more" hidden>
+            <label class="field"><span>Who are you staying with?</span>
+              <input type="text" name="with" maxlength="200" placeholder="For example: the Jonas family, Aunt Rita" /></label>
+            <div class="field">
+              <span id="lbl-group">How many people will be staying together in total (including you)?</span>
+              <div class="stepper" role="group" aria-labelledby="lbl-group">
+                <button type="button" data-stepper="groupSize" data-delta="-1" aria-label="One fewer person in the group">−</button>
+                <output id="out-groupSize" aria-live="polite"></output>
+                <button type="button" data-stepper="groupSize" data-delta="1" aria-label="One more person in the group">+</button>
+              </div>
+              <p class="hint">We’ll split the cost of the place to stay and the car fairly, by person.</p>
             </div>
           </div>
-        </details>
+          <p class="hint">Deividas &amp; Gina use this to see who’s staying together.</p>
+        </form>
         <div id="when-notes" class="notes" aria-live="polite"></div>
         <div class="step-next" id="next-2"></div>
       </div>
@@ -168,19 +179,20 @@
     <p><button type="button" class="btn" id="share-btn">Share this page with family</button></p>
     <p id="footer-help"></p>
     <p>Prices are estimates for late May. You’ll always see the real price on the booking site before you pay.</p>
-    <p>Your address and plans stay on this device. Address search uses OpenStreetMap.</p>
+    <p>Your address stays on this device. If you send your plans to the couple, they’ll see your names, dates, where you’re staying and who you’re staying with. Address search uses OpenStreetMap.</p>
+    <p><a href="couple.html">For Deividas &amp; Gina: who’s staying with who</a></p>
   </footer>
 
   <div class="tripbar" id="tripbar" aria-live="polite" hidden></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script src="data/wedding.js?v=6"></script>
-  <script src="data/airports.js?v=6"></script>
-  <script src="js/planner.js?v=6"></script>
-  <script src="js/travel.js?v=6"></script>
-  <script src="js/links.js?v=6"></script>
-  <script src="js/tripmap.js?v=6"></script>
-  <script src="js/app.js?v=6"></script>
+  <script src="data/wedding.js?v=7"></script>
+  <script src="data/airports.js?v=7"></script>
+  <script src="js/planner.js?v=7"></script>
+  <script src="js/travel.js?v=7"></script>
+  <script src="js/links.js?v=7"></script>
+  <script src="js/tripmap.js?v=7"></script>
+  <script src="js/app.js?v=7"></script>
 </body>
 </html>

@@ -409,3 +409,47 @@ table.compare { width: 100%; min-width: 520px; border-collapse: collapse; }
   .step { box-shadow: none; border: 0; padding: 0; }
   .book-step { break-inside: avoid; }
 }
+
+/* ---------- Staying-together question (step 2) ---------- */
+.guest-form { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); display: grid; gap: 16px; }
+.field-names { max-width: 560px; }
+.choice { border: 0; padding: 0; margin: 0; display: grid; gap: 10px; }
+.choice legend { font-weight: 700; margin-bottom: 8px; padding: 0; font-size: 1.05rem; }
+.choice-btn {
+  display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 12px 16px;
+  border: 2px solid var(--line); border-radius: 12px; cursor: pointer; background: var(--surface);
+}
+.choice-btn:hover { border-color: var(--accent); }
+.choice-btn input { width: 26px; height: 26px; accent-color: var(--accent); flex: none; }
+.choice-btn:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); font-weight: 700; }
+.together-more { display: grid; gap: 16px; padding: 16px; border-radius: 12px; background: var(--surface-2); }
+.send-box { margin: 24px 0 8px; padding: 18px 20px; border: 2px solid var(--sage); border-radius: 14px; background: #f6faf6; }
+.send-box .sub-h { margin-top: 0; }
+.plain-list { list-style: none; padding: 0; margin: 0 0 8px; display: grid; gap: 4px; }
+
+/* ---------- Couple's page ---------- */
+.hero-small { padding: 48px 16px 32px; }
+.hero-small h1 { font-size: clamp(2.2rem, 7vw, 3.4rem); }
+.cp-pad { padding-top: 24px; }
+.cp-tools { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 8px 0 16px; }
+.cp-search { flex: 1 1 260px; max-width: 420px; }
+.cp-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 18px; }
+.cp-stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.cp-stat b { display: block; font-size: 1.8rem; line-height: 1.1; }
+.cp-stat span { color: var(--muted); font-size: .95rem; }
+.cp-tabs { grid-template-columns: repeat(3, 1fr); }
+.cp-group { background: var(--surface); border: 2px solid var(--line); border-radius: 14px; padding: 18px 20px; margin-bottom: 14px; }
+.cp-group-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px; margin-bottom: 8px; }
+.cp-group-head h3 { font-family: var(--serif); font-weight: 600; font-size: 1.5rem; }
+.cp-group-head p { margin: 0; }
+.cp-group .notice { margin: 10px 0 0; }
+.cp-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0; }
+.cp-party { padding: 10px 0; border-top: 1px solid var(--line); }
+.cp-party:first-child { border-top: 0; }
+.cp-party-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.cp-card-list { background: var(--surface); border: 2px solid var(--line); border-radius: 14px; padding: 6px 20px; }
+.cp-table td, .cp-table th { font-size: .95rem; }
+@media print {
+  .couple-page .hero-small a, .cp-tools, .cp-tabs { display: none !important; }
+  .cp-group { break-inside: avoid; }
+}

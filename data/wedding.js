@@ -28,6 +28,13 @@
     suggestedArrive: '2027-05-26',
     suggestedDepart: '2027-05-30',
 
+    // Where guests' answers are saved (who they're staying with, where, when).
+    // Paste your Google Apps Script web-app address here — see google-apps-script/SETUP.md.
+    responses: {
+      endpoint: '', // e.g. 'https://script.google.com/macros/s/AKfy.../exec'
+      sheetUrl: '', // optional: link to your Google Sheet, shown on the couple's page
+    },
+
     // Someone guests can call if they need help booking. Set to null to hide it.
     help: null, // e.g. { name: 'Aunt Linda', phone: '555-123-4567' }
 
