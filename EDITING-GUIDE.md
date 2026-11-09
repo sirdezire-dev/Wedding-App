@@ -8,7 +8,7 @@ This guide is for anyone editing the site, including AI assistants like ChatGPT 
 - **Couple's "Who's staying with who" page:** https://sirdezire-dev.github.io/Wedding-App/couple.html (needs the passcode set in the Google Sheet script)
 - **Code (GitHub):** https://github.com/sirdezire-dev/Wedding-App (branch `claude/wedding-guest-travel-planner-0i8xpc`, which is the default branch and what the live site publishes)
 - **Guest answers (Google Sheet, private):** https://docs.google.com/spreadsheets/d/1MHg4Br30pPgHFvzlk7lh_hBgT_3V_-1bM6fDpex-L5I/edit
-- **Steps to turn on guest answers (Google Doc):** https://docs.google.com/document/d/1E2TDR-FFnjekhv_oq-lNAUlEtDRq967qSf_utDFFBb0/edit
+- **Steps to turn on guest answers (Google Doc):** https://docs.google.com/document/d/1MdUGGSzga4fV0VBlenWN9yGdaZe9vDnUIkTHyAr-8cs/edit
 
 ## What the site does
 
