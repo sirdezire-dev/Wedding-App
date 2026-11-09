@@ -14,15 +14,22 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-  <link rel="stylesheet" href="css/styles.css?v=8" />
+  <link rel="stylesheet" href="css/styles.css?v=9" />
 </head>
 <body>
   <a class="skip-link" href="#step-home">Skip to trip planning</a>
 
-  <div class="text-size" role="group" aria-label="Text size">
-    <span>Text size</span>
-    <button type="button" data-text-size="normal" aria-pressed="true">A</button>
-    <button type="button" data-text-size="large" aria-pressed="false" class="larger">A</button>
+  <div class="top-controls">
+    <div class="text-size" role="group" aria-label="Currency">
+      <span>Currency</span>
+      <button type="button" data-currency="USD" aria-pressed="true" class="cur-btn">$ USD</button>
+      <button type="button" data-currency="GBP" aria-pressed="false" class="cur-btn">£ GBP</button>
+    </div>
+    <div class="text-size" role="group" aria-label="Text size">
+      <span>Text size</span>
+      <button type="button" data-text-size="normal" aria-pressed="true">A</button>
+      <button type="button" data-text-size="large" aria-pressed="false" class="larger">A</button>
+    </div>
   </div>
 
   <header class="hero">
@@ -120,15 +127,15 @@
         <p class="lead">For everyone in your party, for the whole trip. You can leave this blank to see everything.</p>
         <form id="budget-form" autocomplete="off">
           <label class="field field-wide"><span>Total budget for the whole trip</span>
-            <span class="money"><span aria-hidden="true">$</span><input type="number" inputmode="numeric" name="budget" min="0" step="50" placeholder="e.g. 3000" /></span>
+            <span class="money"><span aria-hidden="true" class="cur-sym">$</span><input type="number" inputmode="numeric" name="budget" min="0" step="50" placeholder="e.g. 3000" /></span>
           </label>
           <fieldset class="caps">
             <legend>Want a limit for each part? <span class="optional">(optional)</span></legend>
             <p class="hint">We’ll only show options under each limit. If you leave the total blank, your limits are added together to make your total budget.</p>
             <div class="form-grid">
-              <label class="field"><span>Flights, at most</span><span class="money"><span aria-hidden="true">$</span><input type="number" inputmode="numeric" name="cap-travel" min="0" step="50" /></span></label>
-              <label class="field"><span>Place to stay, at most</span><span class="money"><span aria-hidden="true">$</span><input type="number" inputmode="numeric" name="cap-stay" min="0" step="50" /></span></label>
-              <label class="field"><span>Car or shuttle, at most</span><span class="money"><span aria-hidden="true">$</span><input type="number" inputmode="numeric" name="cap-ground" min="0" step="25" /></span></label>
+              <label class="field"><span>Flights, at most</span><span class="money"><span aria-hidden="true" class="cur-sym">$</span><input type="number" inputmode="numeric" name="cap-travel" min="0" step="50" /></span></label>
+              <label class="field"><span>Place to stay, at most</span><span class="money"><span aria-hidden="true" class="cur-sym">$</span><input type="number" inputmode="numeric" name="cap-stay" min="0" step="50" /></span></label>
+              <label class="field"><span>Car or shuttle, at most</span><span class="money"><span aria-hidden="true" class="cur-sym">$</span><input type="number" inputmode="numeric" name="cap-ground" min="0" step="25" /></span></label>
             </div>
           </fieldset>
         </form>
@@ -179,6 +186,7 @@
     <p><button type="button" class="btn" id="share-btn">Share this page with family</button></p>
     <p id="footer-help"></p>
     <p>Prices are estimates for late May. You’ll always see the real price on the booking site before you pay.</p>
+    <p id="fx-note"></p>
     <p>Your address stays on this device. If you send your plans to the couple, they’ll see your names, dates, where you’re staying and who you’re staying with. Address search uses OpenStreetMap.</p>
     <p><a href="couple.html">For Deividas &amp; Gina: who’s staying with who</a></p>
   </footer>
@@ -187,12 +195,12 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script src="data/wedding.js?v=8"></script>
-  <script src="data/airports.js?v=8"></script>
-  <script src="js/planner.js?v=8"></script>
-  <script src="js/travel.js?v=8"></script>
-  <script src="js/links.js?v=8"></script>
-  <script src="js/tripmap.js?v=8"></script>
-  <script src="js/app.js?v=8"></script>
+  <script src="data/wedding.js?v=9"></script>
+  <script src="data/airports.js?v=9"></script>
+  <script src="js/planner.js?v=9"></script>
+  <script src="js/travel.js?v=9"></script>
+  <script src="js/links.js?v=9"></script>
+  <script src="js/tripmap.js?v=9"></script>
+  <script src="js/app.js?v=9"></script>
 </body>
 </html>

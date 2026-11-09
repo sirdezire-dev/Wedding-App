@@ -12,7 +12,8 @@
     date: '2027-05-29', // the ceremony day
     weekendStart: '2027-05-27',
     weekendEnd: '2027-05-29',
-    currency: 'USD',
+    currency: 'USD', // prices below are in US dollars
+    gbpPerUsd: 0.76, // fallback exchange rate if today's rate can't be loaded
 
     venue: {
       name: 'The Red Earth Venue',

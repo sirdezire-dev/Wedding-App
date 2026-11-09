@@ -50,7 +50,9 @@ a { color: var(--accent); text-underline-offset: 3px; }
 .skip-link:focus { top: 12px; }
 
 /* ---------- Text size switch ---------- */
-.text-size { position: absolute; top: 12px; right: 16px; display: flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--muted); z-index: 5; }
+.top-controls { position: absolute; top: 12px; right: 16px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px 18px; z-index: 5; }
+.text-size { display: flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--muted); }
+.text-size button.cur-btn { padding: 0 10px; font-size: .95rem; }
 .text-size button {
   min-width: 44px; min-height: 44px; border-radius: 10px; border: 1.5px solid var(--line);
   background: var(--surface); color: var(--text); font: 700 1rem var(--sans); cursor: pointer;
@@ -388,7 +390,7 @@ table.compare { width: 100%; min-width: 520px; border-collapse: collapse; }
   .mytrip { grid-template-columns: 1fr; }
   .book-step { padding-left: 20px; padding-top: 70px; }
   .home-card { flex-direction: column; align-items: flex-start; }
-  .text-size { position: static; justify-content: flex-end; padding: 10px 16px 0; }
+  .top-controls { position: static; justify-content: flex-end; padding: 10px 16px 0; }
   .hero { padding-top: 32px; }
   .tripbar-inner { flex-wrap: wrap; }
   .tripbar-inner .btn { flex: 1; }
@@ -401,7 +403,7 @@ table.compare { width: 100%; min-width: 520px; border-collapse: collapse; }
 
 /* ---------- Print: just the plan ---------- */
 @media print {
-  .hero, .text-size, .skip-link, #step-home, #step-when, #step-budget, #step-options, #step-browse,
+  .hero, .top-controls, .skip-link, #step-home, #step-when, #step-budget, #step-options, #step-browse,
   #quick, .flow-intro, .step-toggle, .step-next, .tripbar, .toast, .btn-row, .check, .footer, .map-btns, .trip-map-wrap > .btn, .leaflet-control-zoom { display: none !important; }
   .sum-item { break-inside: avoid; }
   #body-6[hidden] { display: block !important; }

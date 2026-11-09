@@ -5,6 +5,8 @@
   'use strict';
 
   const enc = encodeURIComponent;
+  let cur = 'USD'; // booking sites open in the guest's chosen currency where they support it
+  const setCurrency = (c) => (cur = c);
 
   function flight({ from, to, arrive, depart, travelers, stops }) {
     const nonstop = stops === 0;
@@ -13,7 +15,7 @@
         label: 'Google Flights',
         url: `https://www.google.com/travel/flights?q=${enc(
           `Flights from ${from} to ${to} on ${arrive} through ${depart} ${travelers} adults${nonstop ? ' nonstop' : ''}`
-        )}`,
+        )}&curr=${cur}`,
       },
       {
         label: 'Kayak',
@@ -29,7 +31,7 @@
   /** Google Flights search to an airport, with or without a home airport. */
   function flightTo({ from, to, arrive, depart, travelers }) {
     const q = `Flights ${from ? `from ${from} ` : ''}to ${to} on ${arrive} through ${depart} ${travelers} adults`;
-    return `https://www.google.com/travel/flights?q=${enc(q)}`;
+    return `https://www.google.com/travel/flights?q=${enc(q)}&curr=${cur}`;
   }
 
   /** Where to book a particular stay. Uses the couple's link when there is one. */
@@ -37,24 +39,24 @@
     if (s.url) return [{ label: 'Book this place', url: s.url }];
     if (s.type === 'hotel')
       return [
-        { label: 'Booking.com', url: `https://www.booking.com/searchresults.html?ss=${enc(`${s.name}, ${place}`)}&checkin=${arrive}&checkout=${depart}&group_adults=${travelers}&no_rooms=1` },
+        { label: 'Booking.com', url: `https://www.booking.com/searchresults.html?ss=${enc(`${s.name}, ${place}`)}&checkin=${arrive}&checkout=${depart}&group_adults=${travelers}&no_rooms=1&selected_currency=${cur}` },
         { label: 'Google Hotels', url: `https://www.google.com/travel/search?q=${enc(`${s.name} ${place}`)}&checkin=${arrive}&checkout=${depart}` },
       ];
     if (s.type === 'villa')
       return [
         { label: 'Vrbo', url: `https://www.vrbo.com/search?destination=${enc(place)}&startDate=${arrive}&endDate=${depart}&adults=${travelers}` },
-        { label: 'Airbnb', url: `https://www.airbnb.com/s/${enc(place)}/homes?checkin=${arrive}&checkout=${depart}&adults=${travelers}` },
+        { label: 'Airbnb', url: `https://www.airbnb.com/s/${enc(place)}/homes?checkin=${arrive}&checkout=${depart}&adults=${travelers}&currency=${cur}` },
       ];
     return [
-      { label: 'Airbnb', url: `https://www.airbnb.com/s/${enc(place)}/homes?checkin=${arrive}&checkout=${depart}&adults=${travelers}` },
+      { label: 'Airbnb', url: `https://www.airbnb.com/s/${enc(place)}/homes?checkin=${arrive}&checkout=${depart}&adults=${travelers}&currency=${cur}` },
       { label: 'Vrbo', url: `https://www.vrbo.com/search?destination=${enc(place)}&startDate=${arrive}&endDate=${depart}&adults=${travelers}` },
     ];
   }
 
   function staySearch({ place, arrive, depart, travelers }) {
     return [
-      { label: 'Hotels on Booking.com', url: `https://www.booking.com/searchresults.html?ss=${enc(place)}&checkin=${arrive}&checkout=${depart}&group_adults=${travelers}&no_rooms=1` },
-      { label: 'Homes on Airbnb', url: `https://www.airbnb.com/s/${enc(place)}/homes?checkin=${arrive}&checkout=${depart}&adults=${travelers}` },
+      { label: 'Hotels on Booking.com', url: `https://www.booking.com/searchresults.html?ss=${enc(place)}&checkin=${arrive}&checkout=${depart}&group_adults=${travelers}&no_rooms=1&selected_currency=${cur}` },
+      { label: 'Homes on Airbnb', url: `https://www.airbnb.com/s/${enc(place)}/homes?checkin=${arrive}&checkout=${depart}&adults=${travelers}&currency=${cur}` },
       { label: 'Vacation homes on Vrbo', url: `https://www.vrbo.com/search?destination=${enc(place)}&startDate=${arrive}&endDate=${depart}&adults=${travelers}` },
     ];
   }
@@ -87,5 +89,5 @@
     ];
   }
 
-  root.Links = { flight, flightTo, stay, staySearch, car, transfer, drive, venueMap, activitySearch };
+  root.Links = { setCurrency, flight, flightTo, stay, staySearch, car, transfer, drive, venueMap, activitySearch };
 })(window);

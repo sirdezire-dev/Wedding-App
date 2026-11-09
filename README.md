@@ -30,6 +30,10 @@ Open **couple.html** (there's a link at the bottom of the site) and enter your p
 
 Until the sheet is connected, couple.html shows example answers. To connect it, follow [`google-apps-script/SETUP.md`](google-apps-script/SETUP.md) (about 5 minutes), then put the web-app URL in `data/wedding.js` → `responses.endpoint`.
 
+## Currency: US dollars or British pounds
+
+A **$ USD / £ GBP** switch at the top of every page converts every price on the site: packages, totals, every option, the budget boxes, and "price you found" entries. Prices are stored in US dollars and converted with a recent exchange rate (from open.er-api.com, refreshed twice a day), or with `gbpPerUsd` in `data/wedding.js` if that can't be loaded. Phones set to UK English start in pounds. Google Flights, Booking.com and Airbnb open in the chosen currency.
+
 ## About the prices
 
 The flight fares and travel times are **estimates**, worked out from distance, number of stops and airport. Hotel, car and activity prices are typical late-May prices set in `data/wedding.js`. Guests always see the real price on the booking site before they pay. Address search and maps use the free OpenStreetMap service (maps are drawn with Leaflet). If that service doesn't respond, guests can pick their nearest airport instead.

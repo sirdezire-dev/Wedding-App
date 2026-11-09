@@ -40,6 +40,7 @@
     quickOpen: false,
     confirmed: { when: false, budget: false, extras: false },
     textSize: 'normal',
+    currency: /^en-GB/i.test(navigator.language || '') ? 'GBP' : 'USD',
   });
 
   let state = load();
@@ -79,8 +80,58 @@
 
   // ---------------------------------------------------------------- helpers
   const $ = (sel, el = document) => el.querySelector(sel);
-  const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: W.currency, maximumFractionDigits: 0 });
-  const fmt = (n) => money.format(Math.round(n || 0));
+  // ---- currency: every price is stored in US dollars and shown in the guest's chosen currency
+  const FX_KEY = 'wedding-fx';
+  let gbpPerUsd = W.gbpPerUsd || 0.76;
+  let fxLive = false;
+  try {
+    const c = JSON.parse(localStorage.getItem(FX_KEY) || 'null');
+    if (c && c.rate > 0.3 && c.rate < 2) { gbpPerUsd = c.rate; fxLive = true; }
+  } catch (e) { /* no saved rate */ }
+  const FORMATTERS = {
+    USD: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }),
+    GBP: new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 }),
+  };
+  const isGBP = () => state.currency === 'GBP';
+  const fromUSD = (n) => (isGBP() ? n * gbpPerUsd : n);
+  const toUSD = (n) => (isGBP() ? n / gbpPerUsd : n);
+  const sym = () => (isGBP() ? '£' : '$');
+  const fmt = (n) => FORMATTERS[isGBP() ? 'GBP' : 'USD'].format(Math.round(fromUSD(n || 0)));
+  /** A stored dollar amount as a whole number in the chosen currency, for an input box. */
+  const inputValue = (usd) => (usd === '' || usd == null ? '' : String(Math.round(fromUSD(Number(usd)))));
+  /** What the guest typed (in the chosen currency) as dollars for storage. */
+  const storeValue = (typed) => (typed === '' ? '' : String(Math.round(toUSD(Number(typed)) * 100) / 100));
+
+  async function loadRate() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(FX_KEY) || 'null');
+      if (saved && Date.now() - saved.at < 12 * 3600 * 1000) return;
+    } catch (e) { /* refresh */ }
+    try {
+      const res = await fetch('https://open.er-api.com/v6/latest/USD');
+      const data = await res.json();
+      const r = data && data.rates && data.rates.GBP;
+      if (r > 0.3 && r < 2) {
+        gbpPerUsd = r;
+        fxLive = true;
+        try { localStorage.setItem(FX_KEY, JSON.stringify({ rate: r, at: Date.now() })); } catch (e) { /* ignore */ }
+        if (isGBP()) { fillForms(); renderAll(); }
+        renderFxNote();
+      }
+    } catch (e) { /* keep the fallback rate */ }
+  }
+
+  function renderFxNote() {
+    const usdPerGbp = (1 / gbpPerUsd).toFixed(2);
+    $('#fx-note').textContent = `Prices in pounds are converted from US dollars at about £1 = $${usdPerGbp}${fxLive ? ' (recent exchange rate)' : ''}. You’ll pay in whatever currency the booking site uses.`;
+  }
+
+  function applyCurrency() {
+    L.setCurrency(state.currency);
+    document.querySelectorAll('[data-currency]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.currency === state.currency)));
+    document.querySelectorAll('.cur-sym').forEach((el) => (el.textContent = sym()));
+    renderFxNote();
+  }
   const esc = (s) =>
     String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const safeUrl = (u) => (/^https?:\/\//i.test(u || '') ? u : '');
@@ -494,10 +545,10 @@
 
   /** What a typed-in "price I found" means for each kind of option. */
   function priceUnit(slot, item) {
-    if (slot === 'travel') return { label: 'Round-trip price per person', base: item.price };
-    if (slot === 'stay') return { label: 'Price per night (before tax)', base: item.nightly };
-    if (item.kind === 'car') return { label: 'Price per day', base: item.daily };
-    return { label: item.pricing === 'perPerson' ? 'Price per person' : 'Price for the ride', base: item.price };
+    if (slot === 'travel') return { label: `Round-trip price per person (${sym()})`, base: item.price };
+    if (slot === 'stay') return { label: `Price per night, before tax (${sym()})`, base: item.nightly };
+    if (item.kind === 'car') return { label: `Price per day (${sym()})`, base: item.daily };
+    return { label: `${item.pricing === 'perPerson' ? 'Price per person' : 'Price for the ride'} (${sym()})`, base: item.price };
   }
 
   function priceTag(item) {
@@ -518,7 +569,7 @@
           <summary>Found a different price online?</summary>
           <form class="found-form" data-found="${esc(item.id)}">
             <label class="field"><span>${u.label}</span>
-              <span class="money"><span aria-hidden="true">$</span><input type="number" inputmode="decimal" name="price" min="0" step="1" value="${item.foundOnline ? esc(u.base) : ''}" placeholder="${esc(u.base)}" /></span></label>
+              <span class="money"><span aria-hidden="true">${sym()}</span><input type="number" inputmode="decimal" name="price" min="0" step="1" value="${item.foundOnline ? esc(inputValue(u.base)) : ''}" placeholder="${esc(inputValue(u.base))}" /></span></label>
             <div class="btn-row tight"><button type="submit" class="btn btn-small btn-primary">Use this price</button>
             ${item.foundOnline ? `<button type="button" class="btn btn-small btn-quiet" data-action="clear-found" data-id="${esc(item.id)}">Go back to our estimate</button>` : ''}</div>
           </form>
@@ -674,7 +725,7 @@
       <article class="trip-card ${tier ? 'is-pick' : ''} ${isChosen ? 'is-chosen' : ''}">
         <header class="tc-head">
           <div>
-            ${tier ? `<p class="tc-level">${level ? `${'$'.repeat(level)}<span class="sr-only">Level ${level} of 4</span>` : ''}</p><p class="tc-label">${esc(tier.label)}</p><p class="tc-why">${esc(tier.why)}</p>` : ''}
+            ${tier ? `<p class="tc-level">${level ? `${sym().repeat(level)}<span class="sr-only">Level ${level} of 4</span>` : ''}</p><p class="tc-label">${esc(tier.label)}</p><p class="tc-why">${esc(tier.why)}</p>` : ''}
           </div>
           <div class="tc-total"><span>${fmt(p.total)}</span><small>total for ${plural(t.travelers, 'person', 'people')}, ${plural(n, 'night')}${b.total != null ? `<br/>${Math.round((p.total / b.total) * 100)}% of your budget` : ''}</small></div>
         </header>
@@ -768,7 +819,7 @@
         <article class="card ${isSel ? 'is-chosen' : ''}">
           <div class="card-head"><h3>Drive your own car</h3><p class="price">${fmt(cost)}<small>fuel${o.overnight ? ' + motel' : ''}, round trip</small></p></div>
           <p>${esc(travelLine(o))}.</p>
-          <p class="muted">No flights and no rental car needed. Fuel is estimated at 17¢ a mile.</p>
+          <p class="muted">No flights and no rental car needed. Fuel is estimated at ${isGBP() ? `${Math.round(17 * gbpPerUsd)}p` : '17¢'} a mile.</p>
           ${fitNote('travel', o, cost)}
           <div class="card-actions">${linkButtons(L.drive(state.home, W.venue), 'btn-primary')}${choiceButton('travel', o.id, isSel)}</div>
         </article>`;
@@ -800,7 +851,7 @@
         <label class="field"><span>To airport</span><select name="to">${W.airports.map((a) => `<option value="${a.code}">${esc(a.name)}</option>`).join('')}</select></label>
         <label class="field"><span>Stops</span><select name="stops"><option value="0">Direct</option><option value="1">1 stop</option><option value="2">2 stops</option></select></label>
         <label class="field"><span>Hours of travel (one way)</span><input name="hours" type="number" step="0.5" min="0" required /></label>
-        <label class="field"><span>Round-trip price per person</span><input name="price" type="number" min="0" required /></label>
+        <label class="field"><span>Round-trip price per person (${sym()})</span><input name="price" type="number" min="0" required /></label>
         <label class="field"><span>Link (optional)</span><input name="url" type="url" placeholder="https://" /></label>
         <div class="field"><span>&nbsp;</span><button class="btn btn-primary" type="submit">Add this flight</button></div>
       </form></details>`;
@@ -823,9 +874,9 @@
         <form class="form-grid" data-add="stay">
           <label class="field"><span>Name</span><input name="name" required /></label>
           <label class="field"><span>Type</span><select name="type">${Object.entries(STAY_TYPES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
-          <label class="field"><span>Price per night</span><input name="nightly" type="number" min="0" required /></label>
+          <label class="field"><span>Price per night (${sym()})</span><input name="nightly" type="number" min="0" required /></label>
           <label class="field"><span>Sleeps how many</span><input name="maxGuests" type="number" min="1" value="2" required /></label>
-          <label class="field"><span>Cleaning fee</span><input name="cleaningFee" type="number" min="0" value="0" /></label>
+          <label class="field"><span>Cleaning fee (${sym()})</span><input name="cleaningFee" type="number" min="0" value="0" /></label>
           <label class="field"><span>Link (optional)</span><input name="url" type="url" placeholder="https://" /></label>
           <div class="field"><span>&nbsp;</span><button class="btn btn-primary" type="submit">Add this place</button></div>
         </form></details>`;
@@ -1204,10 +1255,10 @@
     wf.arrive.value = t.arrive;
     wf.depart.value = t.depart;
     const bf = $('#budget-form');
-    bf.budget.value = t.budget;
-    bf['cap-travel'].value = state.caps.travel;
-    bf['cap-stay'].value = state.caps.stay;
-    bf['cap-ground'].value = state.caps.ground;
+    bf.budget.value = inputValue(t.budget);
+    bf['cap-travel'].value = inputValue(state.caps.travel);
+    bf['cap-stay'].value = inputValue(state.caps.stay);
+    bf['cap-ground'].value = inputValue(state.caps.ground);
     const gf = $('#guest-form');
     gf.names.value = state.guest.names;
     gf.with.value = state.guest.with;
@@ -1263,8 +1314,8 @@
 
     $('#budget-form').addEventListener('input', (e) => {
       const { name, value } = e.target;
-      if (name === 'budget') state.trip.budget = value;
-      else if (name.startsWith('cap-')) state.caps[name.slice(4)] = value;
+      if (name === 'budget') state.trip.budget = storeValue(value);
+      else if (name.startsWith('cap-')) state.caps[name.slice(4)] = storeValue(value);
       else return;
       state.showCount = defaults().showCount;
       save();
@@ -1278,14 +1329,14 @@
     if (form.dataset.add === 'flight') {
       const item = {
         id: uid('my-flight'), kind: 'flight', custom: true, carriers: d.airline.trim(), from: d.from.toUpperCase().trim(), to: d.to,
-        stops: n(d.stops), via: [], durationMinutes: Math.round(n(d.hours) * 60), price: n(d.price), homeMinutes: 0, url: safeUrl(d.url),
+        stops: n(d.stops), via: [], durationMinutes: Math.round(n(d.hours) * 60), price: Number(storeValue(String(n(d.price)))), homeMinutes: 0, url: safeUrl(d.url),
       };
       state.custom.flights.push(item);
       state.selection.travelId = item.id;
     } else {
       const item = {
-        id: uid('my-stay'), custom: true, name: d.name.trim(), type: d.type, nightly: n(d.nightly), maxGuests: Math.max(1, n(d.maxGuests)),
-        cleaningFee: n(d.cleaningFee), taxRate: 0.13, url: safeUrl(d.url), amenities: [],
+        id: uid('my-stay'), custom: true, name: d.name.trim(), type: d.type, nightly: Number(storeValue(String(n(d.nightly)))), maxGuests: Math.max(1, n(d.maxGuests)),
+        cleaningFee: Number(storeValue(String(n(d.cleaningFee)))), taxRate: 0.13, url: safeUrl(d.url), amenities: [],
       };
       state.custom.stays.push(item);
       state.selection.stayId = item.id;
@@ -1312,6 +1363,16 @@
       renderTabs();
       renderBrowse();
       openStep(5);
+      return;
+    }
+    const curBtn = e.target.closest('[data-currency]');
+    if (curBtn) {
+      state.currency = curBtn.dataset.currency;
+      save();
+      applyCurrency();
+      fillForms();
+      renderAll();
+      toast(isGBP() ? 'Showing prices in British pounds (£).' : 'Showing prices in US dollars ($).');
       return;
     }
     const sizeBtn = e.target.closest('[data-text-size]');
@@ -1536,7 +1597,7 @@
       e.preventDefault();
       const v = Number(found.price.value);
       if (!found.price.value || !(v >= 0)) return toast('Please type a price.');
-      state.found[found.dataset.found] = v;
+      state.found[found.dataset.found] = Number(storeValue(String(v)));
       save();
       renderAll();
       toast('Updated with the price you found.');
@@ -1744,6 +1805,8 @@
   if (!state.openSteps.length) state.openSteps = [nextUnfinished()];
   renderHeader();
   applyTextSize();
+  applyCurrency();
+  loadRate();
   fillForms();
   wireForms();
   renderAll();
