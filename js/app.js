@@ -1203,17 +1203,20 @@
     const g = state.guest;
     const list = allGroups();
     const chosen = list.find((x) => x.id === g.groupId) || (g.groupId ? { id: g.groupId, name: g.groupName, people: 0, stay: '' } : null);
-    $('#gp-current').textContent = chosen ? `Your group: ${chosen.name}` : '';
+    $('#gp-current').textContent = chosen ? `Your family: ${chosen.name}` : '';
+    const myNames = g.names.trim();
+    const mineExists = myNames && list.some((x) => x.name.toLowerCase() === myNames.toLowerCase());
+    $('#create-family-btn').textContent = myNames ? `+ Create a family: ${myNames}` : '+ Create a family with my names';
+    $('#new-family').hidden = newGroupOpen || !!mineExists;
     $('#group-panel').hidden = !groupsOpen;
     $('.group-toggle').setAttribute('aria-expanded', String(groupsOpen));
     $('#gp-cue').textContent = groupsOpen ? 'Close' : chosen ? 'Change' : 'Open';
     $('#new-group').hidden = !newGroupOpen;
-    $('.btn-new-group').hidden = newGroupOpen;
     $('.btn-new-group').setAttribute('aria-expanded', String(newGroupOpen));
 
     let html = '';
-    if (groupsStatus === 'loading' && !list.length) html = '<p class="muted">Loading groups…</p>';
-    else if (groupsStatus === 'error') html = '<p class="notice warn">Couldn’t load the groups just now. <button type="button" class="link-btn" data-action="reload-groups">Try again</button></p>';
+    if (groupsStatus === 'loading' && !list.length) html = '<p class="muted">Loading families…</p>';
+    else if (groupsStatus === 'error') html = '<p class="notice warn">Couldn’t load the families just now. <button type="button" class="link-btn" data-action="reload-groups">Try again</button></p>';
     if (list.length) {
       html += `<div class="group-opts">${list
         .map((x) => {
@@ -1224,9 +1227,9 @@
         })
         .join('')}</div>`;
     } else if (groupsStatus !== 'loading' && groupsStatus !== 'error') {
-      html += groupsStatus === 'off' ? '<p class="muted">Shared groups aren’t switched on yet. You can still name your group below, and tell the others what you called it.</p>' : '<p class="muted">No groups yet. Be the first: start one below.</p>';
+      html += groupsStatus === 'off' ? '<p class="muted">Shared families aren’t switched on yet. You can still create yours below, and tell the others its name.</p>' : '<p class="muted">No families yet. Be the first: create yours below.</p>';
     }
-    if (chosen) html += `<button type="button" class="link-btn" data-action="leave-group">I’m not in a group</button>`;
+    if (chosen) html += `<button type="button" class="link-btn" data-action="leave-group">I’m not with a family</button>`;
     $('#group-list').innerHTML = html;
     renderSameStay(chosen);
   }
@@ -1243,8 +1246,8 @@
     const already = stay && state.selection.stayId === stay.id;
     el.innerHTML = stay
       ? already
-        ? `<p class="notice good">You’re staying at ${esc(stay.name)}, the same place as your group.</p>`
-        : `<div class="notice">Your group is staying at <b>${esc(stay.name)}</b>. <button type="button" class="btn btn-small btn-primary" data-action="same-stay" data-id="${esc(stay.id)}">Choose the same place</button></div>`
+        ? `<p class="notice good">You’re staying at ${esc(stay.name)}, the same place as your family.</p>`
+        : `<div class="notice">Your family is staying at <b>${esc(stay.name)}</b>. <button type="button" class="btn btn-small btn-primary" data-action="same-stay" data-id="${esc(stay.id)}">Choose the same place</button></div>`
       : '';
   }
 
@@ -1259,14 +1262,28 @@
     newGroupOpen = false;
     save();
     renderAll();
-    toast(`You’re in the “${g.name}” group.`);
+    toast(`You’re staying with “${g.name}”.`);
   }
 
-  function createGroup() {
+  /** One tap: the family is named with the names the guest already typed. */
+  function createFromNames() {
+    const names = state.guest.names.trim();
+    if (!names) {
+      toast('First type your name in the box above.');
+      const f = $('#guest-form').names;
+      f.focus();
+      f.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    $('#new-group-name').value = names;
+    createGroup(true);
+  }
+
+  function createGroup(auto = false) {
     const input = $('#new-group-name');
     const name = input.value.trim().replace(/\s+/g, ' ').slice(0, 80);
     if (name.length < 2) {
-      toast('Please type a name for your group.');
+      toast('Please type a name for your family.');
       input.focus();
       return;
     }
@@ -1277,7 +1294,7 @@
       return;
     }
     const id = uid('grp');
-    state.guest.groupLocal = { id, name };
+    state.guest.groupLocal = { id, name, auto: !!auto };
     input.value = '';
     pickGroup(id);
   }
@@ -1419,7 +1436,18 @@
     $('#guest-form').addEventListener('input', (e) => {
       const { name, value } = e.target;
       const g = state.guest;
-      if (name === 'names') g.names = value.slice(0, 200);
+      if (name === 'names') {
+        g.names = value.slice(0, 200);
+        const local = g.groupLocal;
+        if (local && local.auto && g.groupId === local.id && !groups.some((x) => x.id === local.id) && g.names.trim()) {
+          local.name = g.names.trim().slice(0, 80);
+          g.groupName = local.name;
+        }
+        save();
+        renderGroups();
+        renderSteps();
+        return;
+      }
       else if (name === 'with') g.with = value.slice(0, 200);
       else if (name === 'together') {
         g.together = value;
@@ -1631,10 +1659,16 @@
       case 'toggle-new-group':
         newGroupOpen = !newGroupOpen;
         renderGroups();
-        if (newGroupOpen) $('#new-group-name').focus();
+        if (newGroupOpen) {
+          if (!$('#new-group-name').value) $('#new-group-name').value = state.guest.names.trim();
+          $('#new-group-name').focus();
+        }
         return;
       case 'create-group':
         createGroup();
+        return;
+      case 'create-from-names':
+        createFromNames();
         return;
       case 'pick-group':
         pickGroup(id);
@@ -1653,7 +1687,7 @@
         state.selection.stayId = id;
         save();
         renderAll();
-        toast('Done — you’re staying at the same place as your group.');
+        toast('Done — you’re staying at the same place as your family.');
         return;
       case 'send-plans':
         sendPlans();

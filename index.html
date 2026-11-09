@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-  <link rel="stylesheet" href="css/styles.css?v=12" />
+  <link rel="stylesheet" href="css/styles.css?v=13" />
 </head>
 <body>
   <a class="skip-link" href="#step-home">Skip to trip planning</a>
@@ -102,18 +102,21 @@
           <div id="together-more" class="together-more" hidden>
             <div class="group-pick">
               <button type="button" class="group-toggle" data-action="toggle-groups" aria-expanded="true" aria-controls="group-panel">
-                <span class="gp-text"><span class="gp-title">Which group are you staying with?</span><span class="gp-current" id="gp-current"></span></span>
+                <span class="gp-text"><span class="gp-title">Which family are you staying with?</span><span class="gp-current" id="gp-current"></span></span>
                 <span class="step-cue" id="gp-cue">Close</span>
               </button>
               <div id="group-panel" class="group-panel">
-                <p class="hint">Tap your group. If it isn’t here yet, start it, and the others in your group can then tap it.</p>
+                <p class="hint">Tap the family you’re staying with. If it isn’t here yet, create it with your names, and the others can then tap it.</p>
                 <div id="group-list" aria-live="polite"></div>
-                <button type="button" class="btn btn-new-group" data-action="toggle-new-group" aria-expanded="false" aria-controls="new-group">+ Start a new group</button>
+                <div class="new-family" id="new-family">
+                  <button type="button" class="btn btn-primary btn-create-family" data-action="create-from-names" id="create-family-btn">+ Create a family with my names</button>
+                  <button type="button" class="link-btn btn-new-group" data-action="toggle-new-group" aria-expanded="false" aria-controls="new-group">Use a different name</button>
+                </div>
                 <div id="new-group" class="new-group" hidden>
-                  <label class="field"><span>Name your group</span>
-                    <input type="text" id="new-group-name" maxlength="80" placeholder="For example: Jonas family house" /></label>
+                  <label class="field"><span>Family name</span>
+                    <input type="text" id="new-group-name" maxlength="80" placeholder="For example: Linda and Tom Smith" /></label>
                   <div class="btn-row tight">
-                    <button type="button" class="btn btn-primary" data-action="create-group">Create my group</button>
+                    <button type="button" class="btn btn-primary" data-action="create-group">Create family</button>
                     <button type="button" class="btn btn-quiet" data-action="toggle-new-group">Cancel</button>
                   </div>
                 </div>
@@ -217,12 +220,12 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script src="data/wedding.js?v=12"></script>
-  <script src="data/airports.js?v=12"></script>
-  <script src="js/planner.js?v=12"></script>
-  <script src="js/travel.js?v=12"></script>
-  <script src="js/links.js?v=12"></script>
-  <script src="js/tripmap.js?v=12"></script>
-  <script src="js/app.js?v=12"></script>
+  <script src="data/wedding.js?v=13"></script>
+  <script src="data/airports.js?v=13"></script>
+  <script src="js/planner.js?v=13"></script>
+  <script src="js/travel.js?v=13"></script>
+  <script src="js/links.js?v=13"></script>
+  <script src="js/tripmap.js?v=13"></script>
+  <script src="js/app.js?v=13"></script>
 </body>
 </html>

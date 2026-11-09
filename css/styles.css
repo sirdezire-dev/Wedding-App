@@ -480,3 +480,5 @@ table.compare { width: 100%; min-width: 520px; border-collapse: collapse; }
 .btn-new-group { justify-self: start; }
 .new-group { display: grid; gap: 10px; padding: 14px; border-radius: 12px; background: var(--surface-2); }
 #same-stay .notice { margin-top: 4px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.new-family { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.btn-create-family { white-space: normal; text-align: left; justify-content: flex-start; }
