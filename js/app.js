@@ -264,35 +264,102 @@
   }
 
   // ---------------------------------------------------------------- quick booking
+  // ---- "best pick" in each category
+  /** Best-value flight from the guest's home airports: price, plus their time door to venue,
+   *  plus extra weight on a long drive after landing (tiring after a flight). */
+  function bestFlight() {
+    if (!state.origins.length) return null;
+    const t = trip();
+    const flights = T.estimateFlights(state.home, state.origins, ARRIVALS);
+    if (!flights.length) return null;
+    const value = (f) => f.price + (P.doorToDoor(f, AIRPORT) / 60) * 40 + ((AIRPORT[f.to] ? AIRPORT[f.to].minutesToVenue : 0) / 60) * 60 + f.stops * 60;
+    return flights.sort((a, b) => value(a) - value(b))[0] || null;
+  }
+
+  /** Best place to stay of a kind: good reviews, fair price, close to the venue, and enough beds. */
+  function bestStay(types) {
+    const t = trip();
+    const list = allStays().filter((x) => types.includes(x.type));
+    const roomy = list.filter((x) => (x.maxGuests || 2) >= t.groupSize);
+    const pool = types.includes('hotel') || !roomy.length ? list : roomy;
+    const nightlyShare = (x) => P.stayCost(x, t) / Math.max(1, P.nights(t.arrive, t.depart)) / t.travelers;
+    const score = (x) => (x.rating || 4) * 100 - nightlyShare(x) * 0.4 - driveMinutes(x);
+    return pool.sort((a, b) => score(b) - score(a))[0] || null;
+  }
+
+  /** Best-value car with enough seats at the airport they'd fly into. */
+  function bestCar(airport) {
+    const t = trip();
+    const cars = grounds().filter((g) => g.kind === 'car' && g.airport === airport);
+    const fits = cars.filter((g) => g.seats >= t.travelers);
+    return (fits.length ? fits : cars).sort((a, b) => P.groundCost(a, t) - P.groundCost(b, t))[0] || null;
+  }
+
   function renderQuick() {
     const t = trip();
     const n = P.nights(t.arrive, t.depart);
     const from = state.origins[0] || '';
     const d = { arrive: t.arrive, depart: t.depart, travelers: t.travelers };
-    const row = (label, links) => `
-      <div class="quick-row"><span class="qr-label">${label}</span>
-        <div class="qr-btns">${linkButtons(links, 'btn-small')}</div></div>`;
+    const place = W.venue.searchName;
+    const sel = selected();
+
+    const flight = bestFlight();
+    const hotel = bestStay(['hotel']);
+    const home = bestStay(['villa', 'airbnb']);
+    const carAirport = sel.travel && sel.travel.kind === 'flight' ? sel.travel.to : flight ? flight.to : 'SLC';
+    const car = bestCar(carAirport);
+
+    const card = (title, best, sites, note = '') => `
+      <article class="qcard">
+        <h3>${title}</h3>
+        ${best}
+        <p class="qcard-more">Or compare on:</p>
+        <div class="qr-btns">${linkButtons(sites, 'btn-small')}</div>
+        ${note ? `<p class="hint">${note}</p>` : ''}
+      </article>`;
+    const pick = (name, lines, book, extra = '') => `
+      <div class="best-pick">
+        <span class="best-tag">Our best pick</span>
+        <b class="best-name">${name}</b>
+        ${lines.filter(Boolean).map((l) => `<span class="best-line">${l}</span>`).join('')}
+        <div class="best-actions">${linkButtons([book], 'btn-primary btn-small')}${extra}</div>
+      </div>`;
+    const stayLines = (x) => [
+      `${fmt(x.nightly)} a night${x.rating ? ` · rated ${x.rating} of 5` : ''} · about ${driveMinutes(x)} min to the venue`,
+      (x.amenities || []).slice(0, 3).map(esc).join(' · '),
+      n > 0 ? `About <b>${fmt(P.stayCost(x, t))}</b> for your ${plural(n, 'night')}, with taxes and fees${t.groupSize > t.travelers ? ' (your share)' : ''}` : '',
+    ];
+    const mapBtn = (x) => (x && x.lat != null ? `<button type="button" class="btn btn-small" data-action="map-focus" data-id="${esc(x.id)}">📍 Map</button>` : '');
+
+    const flightBest = flight
+      ? pick(
+          `${esc(travelTitle(flight))}`,
+          [
+            `${esc(airportLabel(flight.from))} → ${esc(airportLabel(flight.to))} · usually ${esc(flight.carriers)}`,
+            `About ${hoursText(flight.durationMinutes).replace(/^about /, '')} of travel, then ${hoursText(AIRPORT[flight.to].minutesToVenue)} by car to the venue`,
+            `About <b>${fmt(flight.price)}</b> per person round trip (estimate) · <b>${fmt(P.travelCost(flight, t))}</b> for ${plural(t.travelers, 'person', 'people')}`,
+          ],
+          { label: 'Find this flight', url: L.flight({ from: flight.from, to: flight.to, arrive: t.arrive, depart: t.depart, travelers: t.travelers, stops: flight.stops })[0].url }
+        )
+      : `<div class="best-pick best-empty"><span class="best-tag">Our best pick</span>
+          <span class="best-line">Most guests should fly into <b>Salt Lake City</b>: the most flights and the cheapest cars, then a 3¾-hour drive.</span>
+          <span class="best-line"><button type="button" class="link-btn" data-open-step="1">Tell us where you’re flying from</button> for a pick from your airport.</span></div>`;
+
     $('#quick-body').innerHTML = `
       <p class="quick-dates">${n > 0 ? `<b>${niceDate(t.arrive)} – ${niceDate(t.depart)}</b>` : 'Choose your dates in step 2'} · ${plural(t.travelers, 'person', 'people')} ·
         <button type="button" class="link-btn" data-open-step="2">Change</button></p>
-      <div class="quick-rows">
-        ${row('Flights', [
-          { label: 'Salt Lake City', url: L.flightTo({ from, to: 'SLC', ...d }) },
-          { label: 'Moab', url: L.flightTo({ from, to: 'CNY', ...d }) },
-          { label: 'Grand Junction', url: L.flightTo({ from, to: 'GJT', ...d }) },
-        ])}
-        ${row('Hotels', [
-          { label: 'Booking.com', url: L.staySearch({ place: W.venue.searchName, ...d })[0].url },
-          { label: 'Google Hotels', url: `https://www.google.com/travel/search?q=${encodeURIComponent(`hotels in ${W.venue.searchName}`)}&checkin=${t.arrive}&checkout=${t.depart}` },
-        ])}
-        ${row('Homes', L.staySearch({ place: W.venue.searchName, ...d, travelers: t.groupSize }).slice(1).map((l) => ({ ...l, label: l.label.replace(/^(Homes|Vacation homes) on /, '') })))}
-        ${row('Cars', [
-          { label: 'Salt Lake City', url: L.car({ airport: 'SLC', arrive: t.arrive, depart: t.depart })[0].url },
-          { label: 'Moab', url: L.car({ airport: 'CNY', arrive: t.arrive, depart: t.depart })[0].url },
-          { label: 'Grand Junction', url: L.car({ airport: 'GJT', arrive: t.arrive, depart: t.depart })[0].url },
-        ])}
-      </div>
-      <p class="hint">Most flights go to Salt Lake City (3¾ hours’ drive). Moab’s airport is 15 minutes away. You’ll need a car in Moab.</p>`;
+      <div class="qcards">
+        ${card('Flights', flightBest, L.flightSites({ from, to: flight ? flight.to : 'SLC', ...d }),
+          from ? '' : 'Kayak, Skyscanner and Expedia appear once you tell us your home airport (step 1).')}
+        ${card('Hotels', hotel ? pick(esc(hotel.name), stayLines(hotel), { label: 'Book this hotel', url: L.stay(hotel, { place, ...d })[0].url }, mapBtn(hotel)) : '', L.hotelSites({ place, ...d }))}
+        ${card('Homes & Airbnbs', home ? pick(esc(home.name), [...stayLines(home), `Sleeps ${home.maxGuests}`], { label: 'Find this home', url: L.stay(home, { place, ...d, travelers: t.groupSize })[0].url }, mapBtn(home)) : '', L.homeSites({ place, ...d, travelers: t.groupSize }))}
+        ${card('Rental cars', car ? pick(`${esc(car.name)} from ${esc(cityOf(car.airport))} airport`, [
+            `${esc(car.example)} · seats ${car.seats}`,
+            `About ${fmt(car.daily)} a day plus taxes · <b>${fmt(P.groundCost(car, t))}</b> for your trip${t.groupSize > t.travelers ? ' (your share)' : ''}`,
+          ], { label: 'Find this car', url: L.car({ airport: car.airport, arrive: t.arrive, depart: t.depart })[0].url }) : '',
+          L.carSites({ airport: carAirport, arrive: t.arrive, depart: t.depart }),
+          `You’ll need a car in Moab. Prices are for pick-up at ${esc(airportLabel(carAirport))}.`)}
+      </div>`;
   }
 
   // ---------------------------------------------------------------- step 1: home

@@ -543,3 +543,17 @@ table.compare { width: 100%; min-width: 520px; border-collapse: collapse; }
   .qr-label { width: 100%; }
   .qr-btns .btn { min-height: 44px; padding: 6px 12px; font-size: .95rem; }
 }
+
+/* ---------- Book directly: best picks + more sites ---------- */
+.qcards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.qcard { border: 1px solid var(--line); border-radius: 14px; padding: 16px; background: var(--bg); display: flex; flex-direction: column; gap: 8px; }
+.qcard h3 { font-family: var(--serif); font-weight: 600; font-size: 1.5rem; }
+.best-pick { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px; border-radius: 12px; background: var(--good-soft); border: 1px solid #bfdcc8; }
+.best-pick.best-empty { background: var(--surface-2); border-color: var(--line); }
+.best-tag { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--good); }
+.best-empty .best-tag { color: var(--muted); }
+.best-name { font-size: 1.1rem; }
+.best-line { font-size: .95rem; }
+.best-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.qcard-more { margin: 4px 0 0; font-weight: 700; font-size: .95rem; }
+.qcard .hint { margin: 0; font-size: .9rem; }

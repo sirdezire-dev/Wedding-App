@@ -14,7 +14,7 @@ This guide is for anyone editing the site, including AI assistants like ChatGPT 
 
 A travel planner for guests coming to the wedding weekend, **May 27–29, 2027**, at **The Red Earth Venue, 545 W State Road 313, Moab, Utah**. It's designed so older guests can book on their own: large text, big buttons, plain language and one step at a time.
 
-- **Book directly:** big buttons to Google Flights, Booking.com, Airbnb, Vrbo and rental cars, with the wedding dates already filled in.
+- **Book directly:** for flights, hotels, homes and cars: an "Our best pick" with details and its own book button (flight picked from the guest's home airport, weighing price, travel time, stops and the drive after landing; hotel and home by reviews, price and distance; car with enough seats at the airport they'd fly into), plus more sites to compare (Google Flights, Kayak, Skyscanner, Expedia, airlines; Booking.com, Expedia, Hotels.com, Kayak, Google Hotels; Airbnb, Vrbo, Booking.com homes, Google vacation rentals; Kayak, Expedia, Discover Cars, Enterprise, Hertz, Avis, Turo).
 - **Six guided steps:** each is a collapsible section, and finishing one opens the next.
   1. Where are you traveling from? (address search with OpenStreetMap; finds the nearest airports)
   2. Dates, number of people, names, and **"Will you be staying with other wedding guests?"** If yes, guests tap an existing group or start a new one; group names come from the Google Sheet (`?action=groups`).
