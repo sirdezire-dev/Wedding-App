@@ -24,6 +24,14 @@ function sheet_() {
     sh.appendRow(HEADERS);
     sh.setFrozenRows(1);
     sh.getRange(1, 1, 1, HEADERS.length).setFontWeight('bold');
+  } else {
+    // Add any headings that are missing (e.g. columns added in a newer version).
+    const head = sh.getRange(1, 1, 1, HEADERS.length);
+    const have = head.getValues()[0];
+    if (have.some((h, i) => h !== HEADERS[i])) {
+      head.setValues([HEADERS]);
+      head.setFontWeight('bold');
+    }
   }
   return sh;
 }
