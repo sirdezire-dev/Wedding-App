@@ -1218,13 +1218,13 @@
       html += `<div class="group-opts">${list
         .map((x) => {
           const on = x.id === g.groupId;
-          const count = x.local ? 'New — others can join once you continue' : `${x.people} ${x.people === 1 ? 'person' : 'people'} so far${x.stay ? ` · staying at ${esc(x.stay)}` : ''}`;
+          const count = x.local ? (groupsStatus === 'off' ? 'Saved on this device' : 'New — others can join once you continue') : `${x.people} ${x.people === 1 ? 'person' : 'people'} so far${x.stay ? ` · staying at ${esc(x.stay)}` : ''}`;
           return `<button type="button" class="group-opt" data-action="pick-group" data-id="${esc(x.id)}" aria-pressed="${on}">
             <span class="go-name">${on ? '✓ ' : ''}${esc(x.name)}</span><span class="go-meta">${count}</span></button>`;
         })
         .join('')}</div>`;
     } else if (groupsStatus !== 'loading' && groupsStatus !== 'error') {
-      html += '<p class="muted">No groups yet. Be the first: start one below.</p>';
+      html += groupsStatus === 'off' ? '<p class="muted">Shared groups aren’t switched on yet. You can still name your group below, and tell the others what you called it.</p>' : '<p class="muted">No groups yet. Be the first: start one below.</p>';
     }
     if (chosen) html += `<button type="button" class="link-btn" data-action="leave-group">I’m not in a group</button>`;
     $('#group-list').innerHTML = html;
